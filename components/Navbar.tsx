@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { logoutUser } from "@/lib/auth";
+import { logoutUser, getProfile } from "@/lib/auth";
 import type { Session } from "@/lib/auth";
 
 const NAV = [
@@ -15,7 +15,12 @@ export default function Navbar({ session }: { session: Session }) {
   const router   = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [avatar, setAvatar] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    getProfile().then((p) => { if (p?.avatar) setAvatar(p.avatar); });
+  }, []);
 
   // Close on route change
   useEffect(() => { setOpen(false); }, [pathname]);
@@ -48,8 +53,21 @@ export default function Navbar({ session }: { session: Session }) {
       <header className="border-b border-[#1a1a1a] bg-[#080808] backdrop-blur-sm">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           {/* Left: identity */}
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="w-2 h-2 rounded-full bg-[#0070f3] flex-shrink-0" />
+          <button
+            onClick={() => go("/profile")}
+            className="flex items-center gap-2.5 min-w-0 group"
+          >
+            <div className="w-7 h-7 rounded-full overflow-hidden border border-[#333] group-hover:border-[#0070f3] flex-shrink-0 transition-colors duration-150">
+              {avatar ? (
+                <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-[#111] flex items-center justify-center">
+                  <span className="text-[10px] font-semibold text-[#555] group-hover:text-[#0070f3] transition-colors duration-150">
+                    {session.username.slice(0, 2).toUpperCase()}
+                  </span>
+                </div>
+              )}
+            </div>
             <span className="text-sm font-semibold text-white tracking-tight truncate">
               Salary Manager
             </span>
@@ -60,7 +78,7 @@ export default function Navbar({ session }: { session: Session }) {
                 admin
               </span>
             )}
-          </div>
+          </button>
 
           {/* Right: hamburger */}
           <button
@@ -127,6 +145,22 @@ export default function Navbar({ session }: { session: Session }) {
                 )}
               </button>
             )}
+
+            {/* Profile */}
+            <button
+              onClick={() => go("/profile")}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150 text-left w-full
+                ${pathname === "/profile"
+                  ? "bg-white/[0.07] text-white"
+                  : "text-[#666] hover:text-white hover:bg-white/[0.04]"
+                }`}
+            >
+              <span className="text-base w-5 text-center opacity-60">◉</span>
+              Profile
+              {pathname === "/profile" && (
+                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#0070f3]" />
+              )}
+            </button>
 
             {/* Divider */}
             <div className="h-px bg-[#1a1a1a] my-1" />

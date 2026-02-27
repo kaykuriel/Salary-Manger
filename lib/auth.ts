@@ -88,6 +88,34 @@ export async function getUserData(
   }
 }
 
+export async function getProfile(): Promise<{ username: string; avatar: string | null } | null> {
+  try {
+    const res = await fetch("/api/auth/profile", { cache: "no-store" });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function updateProfile(data: {
+  username?: string;
+  currentPassword?: string;
+  newPassword?: string;
+  avatar?: string | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/auth/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  } catch {
+    return { ok: false, error: "Network error." };
+  }
+}
+
 export async function resetUserPassword(
   userId: string,
   password: string
