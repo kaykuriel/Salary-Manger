@@ -199,7 +199,11 @@ export default function ProfileEditor({ username: initialUsername }: { username:
           <p className={`text-xs ${msg.ok ? "text-[#50e3c2]" : "text-[#ff4444]"}`}>{msg.text}</p>
         )}
 
-        <button type="submit" disabled={saving} className="btn justify-center py-3 disabled:opacity-50">
+        <button
+          type="submit"
+          disabled={saving || (username.trim() === initialUsername && !newPw)}
+          className="btn justify-center py-3 disabled:opacity-30 disabled:cursor-not-allowed"
+        >
           {saving ? "Saving…" : "Save changes"}
         </button>
       </form>

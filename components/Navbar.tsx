@@ -53,21 +53,8 @@ export default function Navbar({ session }: { session: Session }) {
       <header className="border-b border-[#1a1a1a] bg-[#080808] backdrop-blur-sm">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           {/* Left: identity */}
-          <button
-            onClick={() => go("/profile")}
-            className="flex items-center gap-2.5 min-w-0 group"
-          >
-            <div className="w-7 h-7 rounded-full overflow-hidden border border-[#333] group-hover:border-[#0070f3] flex-shrink-0 transition-colors duration-150">
-              {avatar ? (
-                <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-[#111] flex items-center justify-center">
-                  <span className="text-[10px] font-semibold text-[#555] group-hover:text-[#0070f3] transition-colors duration-150">
-                    {session.username.slice(0, 2).toUpperCase()}
-                  </span>
-                </div>
-              )}
-            </div>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-[#0070f3] flex-shrink-0" />
             <span className="text-sm font-semibold text-white tracking-tight truncate">
               Salary Manager
             </span>
@@ -78,18 +65,35 @@ export default function Navbar({ session }: { session: Session }) {
                 admin
               </span>
             )}
-          </button>
+          </div>
 
-          {/* Right: hamburger */}
-          <button
-            onClick={() => setOpen((v) => !v)}
-            className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-all duration-150 active:scale-90 flex-shrink-0
-              ${open
-                ? "border-[#0070f3]/50 text-white bg-[#0070f3]/10"
-                : "border-[#222] text-[#666] hover:text-white hover:border-[#444]"
-              }`}
-            aria-label="Menu"
-          >
+          {/* Right: avatar + hamburger */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => go("/profile")}
+              className="w-8 h-8 rounded-full overflow-hidden border border-[#333] hover:border-[#0070f3] transition-colors duration-150 flex-shrink-0"
+              aria-label="Profile"
+            >
+              {avatar ? (
+                <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-[#111] flex items-center justify-center">
+                  <span className="text-[10px] font-semibold text-[#555]">
+                    {session.username.slice(0, 2).toUpperCase()}
+                  </span>
+                </div>
+              )}
+            </button>
+
+            <button
+              onClick={() => setOpen((v) => !v)}
+              className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-all duration-150 active:scale-90 flex-shrink-0
+                ${open
+                  ? "border-[#0070f3]/50 text-white bg-[#0070f3]/10"
+                  : "border-[#222] text-[#666] hover:text-white hover:border-[#444]"
+                }`}
+              aria-label="Menu"
+            >
             {open ? (
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -99,7 +103,8 @@ export default function Navbar({ session }: { session: Session }) {
                 <path d="M0 1h16M0 6h16M0 11h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
             )}
-          </button>
+            </button>
+          </div>
         </div>
       </header>
 
