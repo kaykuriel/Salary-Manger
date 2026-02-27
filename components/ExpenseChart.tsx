@@ -42,15 +42,17 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Toolti
 }
 
 export default function ExpenseChart({ categories, salary }: ExpenseChartProps) {
-  if (categories.length === 0) return null;
+  // Only render slices for positive amounts — zero/NaN values crash Recharts
+  const validCats = categories.filter((c) => c.amount > 0 && isFinite(c.amount));
+  if (validCats.length === 0) return null;
 
-  const spent     = categories.reduce((sum, c) => sum + c.amount, 0);
+  const spent     = validCats.reduce((sum, c) => sum + c.amount, 0);
   const remaining = salary - spent;
   const hasIncome = salary > 0;
   const spentPct  = hasIncome ? Math.min((spent / salary) * 100, 100) : 100;
 
   const data = [
-    ...categories.map((c) => ({
+    ...validCats.map((c) => ({
       name: c.name,
       value: c.amount,
       color: c.color,
@@ -112,7 +114,7 @@ export default function ExpenseChart({ categories, salary }: ExpenseChartProps) 
 
       {/* Legend table */}
       <ul className="mt-3 flex flex-col">
-        {categories.map((cat) => {
+        {validCats.map((cat) => {
           const pctOfSpent  = spent > 0    ? (cat.amount / spent)  * 100 : 0;
           const pctOfIncome = hasIncome     ? (cat.amount / salary) * 100 : 0;
           return (

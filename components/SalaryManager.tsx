@@ -32,10 +32,32 @@ const empty = (): MonthData => ({ salary: 0, categories: [], extras: [] });
 
 function parseMonthData(data: Record<string, unknown> | null): MonthData {
   if (!data) return empty();
+
+  const rawCats = Array.isArray(data.categories) ? data.categories : [];
+  const categories: Category[] = rawCats.map((c: unknown) => {
+    const cat = (c ?? {}) as Record<string, unknown>;
+    return {
+      id:     typeof cat.id     === "string" ? cat.id : crypto.randomUUID(),
+      name:   typeof cat.name   === "string" ? cat.name : "Unnamed",
+      amount: Number(cat.amount) || 0,
+      color:  typeof cat.color  === "string" ? cat.color : "#0070f3",
+    };
+  });
+
+  const rawExtras = Array.isArray(data.extras) ? data.extras : [];
+  const extras: Extra[] = rawExtras.map((e: unknown) => {
+    const ex = (e ?? {}) as Record<string, unknown>;
+    return {
+      id:     typeof ex.id     === "string" ? ex.id : crypto.randomUUID(),
+      name:   typeof ex.name   === "string" ? ex.name : "Extra",
+      amount: Number(ex.amount) || 0,
+    };
+  });
+
   return {
     salary: Number(data.salary) || 0,
-    categories: Array.isArray(data.categories) ? data.categories as Category[] : [],
-    extras: Array.isArray(data.extras) ? data.extras as Extra[] : [],
+    categories,
+    extras,
   };
 }
 
