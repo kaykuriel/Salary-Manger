@@ -7,6 +7,7 @@ export type User = {
   username: string;
   role: UserRole;
   createdAt: string;
+  avatar: string | null;
 };
 
 export type Session = {

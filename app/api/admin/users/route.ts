@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
 
   const { data } = await supabase
     .from("users")
-    .select("id, username, role, created_at")
+    .select("id, username, role, created_at, avatar")
     .order("created_at", { ascending: true });
 
   const users = (data ?? []).map((u) => ({
@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
     username: u.username,
     role: u.role,
     createdAt: u.created_at,
+    avatar: u.avatar ?? null,
   }));
 
   return NextResponse.json(users);

@@ -325,9 +325,17 @@ export default function AdminPanel({ currentUserId }: { currentUserId: string })
                   {/* Row */}
                   <div className="px-5 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${u.role === "admin" ? "bg-[#0070f3]" : "bg-[#333]"}`}
-                      />
+                      <div className="w-8 h-8 rounded-full overflow-hidden border border-[#2a2a2a] flex-shrink-0">
+                        {u.avatar ? (
+                          <img src={u.avatar} alt={u.username} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-[#111] flex items-center justify-center">
+                            <span className="text-[10px] font-semibold text-[#444]">
+                              {u.username.slice(0, 2).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-medium text-white">{u.username}</span>
