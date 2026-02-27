@@ -4,6 +4,8 @@ interface MonthNavProps {
   monthKey: string;
   onPrev: () => void;
   onNext: () => void;
+  onReload: () => void;
+  loading?: boolean;
 }
 
 function formatMonthKey(key: string) {
@@ -14,7 +16,7 @@ function formatMonthKey(key: string) {
   });
 }
 
-export default function MonthNav({ monthKey, onPrev, onNext }: MonthNavProps) {
+export default function MonthNav({ monthKey, onPrev, onNext, onReload, loading }: MonthNavProps) {
   return (
     <div className="flex items-center justify-center gap-4 py-1">
       <button
@@ -24,9 +26,26 @@ export default function MonthNav({ monthKey, onPrev, onNext }: MonthNavProps) {
       >
         ‹
       </button>
-      <span className="text-base font-semibold text-white min-w-[200px] text-center tracking-tight select-none">
-        {formatMonthKey(monthKey)}
-      </span>
+
+      <div className="flex items-center gap-2 min-w-[200px] justify-center">
+        <span className="text-base font-semibold text-white tracking-tight select-none">
+          {formatMonthKey(monthKey)}
+        </span>
+        <button
+          onClick={onReload}
+          disabled={loading}
+          className={`w-6 h-6 flex items-center justify-center rounded transition-all duration-150 active:scale-90 text-base leading-none
+            ${loading
+              ? "animate-spin text-[#0070f3] cursor-not-allowed"
+              : "text-[#333] hover:text-[#888]"
+            }`}
+          aria-label="Reload"
+          title="Reload"
+        >
+          ↻
+        </button>
+      </div>
+
       <button
         onClick={onNext}
         className="w-8 h-8 flex items-center justify-center border border-[#222] text-[#555] hover:text-white hover:border-[#0070f3] active:scale-90 transition-all duration-150 rounded-lg text-base leading-none"

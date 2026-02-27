@@ -3,13 +3,15 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import MonthNav from "./MonthNav";
 import SalaryInput from "./SalaryInput";
+import ExtrasSection from "./ExtrasSection";
 import CategoryForm from "./CategoryForm";
 import CategoryList from "./CategoryList";
 import SummaryCards from "./SummaryCards";
 import ExpenseChart from "./ExpenseChart";
 
 type Category = { id: string; name: string; amount: number; color: string };
-type MonthData = { salary: number; categories: Category[] };
+type Extra = { id: string; name: string; amount: number };
+type MonthData = { salary: number; categories: Category[]; extras: Extra[] };
 
 const PALETTE = [
   "#0070f3", "#50e3c2", "#f5a623", "#7928ca",
@@ -26,19 +28,43 @@ function shiftMonth(monthKey: string, delta: number) {
   return getMonthKey(new Date(y, m - 1 + delta, 1));
 }
 
-const empty = (): MonthData => ({ salary: 0, categories: [] });
+const empty = (): MonthData => ({ salary: 0, categories: [], extras: [] });
 
-export default function SalaryManager({ userId }: { userId: string }) {
+function parseMonthData(data: Record<string, unknown> | null): MonthData {
+  if (!data) return empty();
+  return {
+    salary: Number(data.salary) || 0,
+    categories: Array.isArray(data.categories) ? data.categories as Category[] : [],
+    extras: Array.isArray(data.extras) ? data.extras as Extra[] : [],
+  };
+}
+
+export default function SalaryManager({ userId: _userId }: { userId: string }) {
   const [monthKey, setMonthKey] = useState(() => getMonthKey(new Date()));
   const [monthData, setMonthData] = useState<MonthData>(empty());
   const [hydrated, setHydrated] = useState(false);
-  // Prevents saving back data we just fetched from the server
+  const [loading, setLoading] = useState(false);
   const justLoadedRef = useRef(false);
+  const isReloadRef = useRef(false);
+  const [fetchKey, setFetchKey] = useState(0);
 
-  // Fetch this month's data from the API whenever monthKey changes
+  const reload = useCallback(() => {
+    isReloadRef.current = true;
+    setFetchKey((k) => k + 1);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    setHydrated(false);
+    const isReload = isReloadRef.current;
+    isReloadRef.current = false;
+
+    if (!isReload) {
+      // Month change: show full loading screen
+      setHydrated(false);
+    } else {
+      // Reload: keep content visible, show spinner
+      setLoading(true);
+    }
     justLoadedRef.current = false;
 
     fetch(`/api/data/${monthKey}`)
@@ -46,18 +72,20 @@ export default function SalaryManager({ userId }: { userId: string }) {
       .then((data) => {
         if (cancelled) return;
         justLoadedRef.current = true;
-        setMonthData(data ?? empty());
+        setMonthData(parseMonthData(data));
         setHydrated(true);
+        setLoading(false);
       })
       .catch(() => {
         if (cancelled) return;
         justLoadedRef.current = true;
         setMonthData(empty());
         setHydrated(true);
+        setLoading(false);
       });
 
     return () => { cancelled = true; };
-  }, [monthKey]);
+  }, [monthKey, fetchKey]);
 
   // Debounced save — skips the first run after a fresh load
   useEffect(() => {
@@ -81,6 +109,7 @@ export default function SalaryManager({ userId }: { userId: string }) {
   }, []);
 
   const totalSpent = monthData.categories.reduce((s, c) => s + c.amount, 0);
+  const totalIncome = monthData.salary + monthData.extras.reduce((s, e) => s + e.amount, 0);
 
   if (!hydrated) {
     return (
@@ -97,9 +126,26 @@ export default function SalaryManager({ userId }: { userId: string }) {
           monthKey={monthKey}
           onPrev={() => setMonthKey((k) => shiftMonth(k, -1))}
           onNext={() => setMonthKey((k) => shiftMonth(k, 1))}
+          onReload={reload}
+          loading={loading}
         />
-        <SalaryInput salary={monthData.salary} onSave={(v) => update((m) => ({ ...m, salary: v }))} />
-        <SummaryCards salary={monthData.salary} spent={totalSpent} />
+        <SalaryInput
+          salary={monthData.salary}
+          onSave={(v) => update((m) => ({ ...m, salary: v }))}
+        />
+        <ExtrasSection
+          extras={monthData.extras}
+          onAdd={(name, amount) =>
+            update((m) => ({
+              ...m,
+              extras: [...m.extras, { id: crypto.randomUUID(), name, amount }],
+            }))
+          }
+          onDelete={(id) =>
+            update((m) => ({ ...m, extras: m.extras.filter((e) => e.id !== id) }))
+          }
+        />
+        <SummaryCards salary={totalIncome} spent={totalSpent} />
         <CategoryForm
           onAdd={(name, amount) =>
             update((m) => ({
@@ -118,12 +164,12 @@ export default function SalaryManager({ userId }: { userId: string }) {
         />
         <CategoryList
           categories={monthData.categories}
-          salary={monthData.salary}
+          salary={totalIncome}
           onDelete={(id) =>
             update((m) => ({ ...m, categories: m.categories.filter((c) => c.id !== id) }))
           }
         />
-        <ExpenseChart categories={monthData.categories} salary={monthData.salary} />
+        <ExpenseChart categories={monthData.categories} salary={totalIncome} />
       </div>
     </main>
   );
