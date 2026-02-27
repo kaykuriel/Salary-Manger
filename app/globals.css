@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Components (lower precedence than Tailwind utilities) ─ */
+@layer components {
+  /* Base input — Tailwind utilities applied on top will always win */
+  .field {
+    @apply w-full bg-transparent border border-[#333] rounded-lg px-3 py-2
+           text-sm text-white placeholder-[#555] outline-none
+           transition-all duration-150;
+  }
+  .field:focus {
+    @apply border-[#0070f3] ring-1 ring-[#0070f3]/20;
+  }
+  .field::placeholder {
+    color: #555;
+  }
+
+  /* Reusable card shell */
+  .card {
+    @apply bg-[#111] border border-[#333] rounded-xl transition-colors duration-200;
+  }
+
+  /* Primary button */
+  .btn {
+    @apply bg-[#0070f3] hover:bg-[#0060df] active:scale-[0.97]
+           text-white text-sm font-medium rounded-lg
+           transition-all duration-150 px-4 py-2 flex-shrink-0 cursor-pointer;
+  }
+
+  /* Ghost button */
+  .btn-ghost {
+    @apply text-[#888] hover:text-white hover:bg-white/5 active:scale-[0.97]
+           text-xs rounded-md transition-all duration-150 px-3 py-1.5;
+  }
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #0070f3; }
+
+/* ─── Number inputs: hide spinners ──────────────────────────── */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="number"] { -moz-appearance: textfield; }
