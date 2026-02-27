@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getUsers, deleteUser, createUser, getUserData, User } from "@/lib/auth";
+import { getUsers, deleteUser, createUser, getUserData, resetUserPassword, User } from "@/lib/auth";
 
 function fmt(v: number) {
   return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -97,6 +97,99 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
   );
 }
 
+// ─── Reset Password Modal ─────────────────────────────────────────────────────
+
+function ResetPasswordModal({
+  userId,
+  username,
+  onClose,
+}: {
+  userId: string;
+  username: string;
+  onClose: () => void;
+}) {
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+
+  async function handle(e: React.FormEvent) {
+    e.preventDefault();
+    if (!password) { setError("Enter a new password."); return; }
+    if (password.length < 4) { setError("Password must be at least 4 characters."); return; }
+    setLoading(true);
+    const res = await resetUserPassword(userId, password);
+    setLoading(false);
+    if (!res.ok) { setError(res.error ?? "Failed."); return; }
+    setDone(true);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="w-full max-w-sm bg-[#111] border border-[#333] rounded-xl shadow-2xl">
+        <div className="border-b border-[#222] px-5 py-4 flex items-center justify-between">
+          <p className="text-sm font-medium text-white">Reset password</p>
+          <button
+            onClick={onClose}
+            className="text-[#555] hover:text-white text-xl leading-none transition-colors"
+          >
+            ×
+          </button>
+        </div>
+        {done ? (
+          <div className="p-5 flex flex-col gap-4 items-center text-center">
+            <div className="w-9 h-9 rounded-full bg-[#0070f3]/10 border border-[#0070f3]/30 flex items-center justify-center">
+              <span className="text-[#0070f3] text-base">✓</span>
+            </div>
+            <p className="text-sm text-white">
+              Password for <span className="font-medium">{username}</span> updated.
+            </p>
+            <button onClick={onClose} className="btn w-full justify-center py-2.5">
+              Done
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handle} className="p-5 flex flex-col gap-4">
+            <p className="text-xs text-[#555]">
+              Set a new password for <span className="text-white font-medium">{username}</span>.
+            </p>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-mono uppercase tracking-widest text-[#555]">New password</label>
+              <div className="relative">
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setError(""); }}
+                  placeholder="new password"
+                  autoFocus
+                  className="field pr-16"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white text-xs transition-colors select-none"
+                  tabIndex={-1}
+                >
+                  {showPw ? "Hide" : "Show"}
+                </button>
+              </div>
+            </div>
+            {error && <p className="text-[#ff4444] text-xs">{error}</p>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn w-full justify-center py-2.5 disabled:opacity-50"
+            >
+              {loading ? "Saving…" : "Reset password"}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── User Data View ───────────────────────────────────────────────────────────
 
 type MonthEntry = {
@@ -172,6 +265,7 @@ export default function AdminPanel({ currentUserId }: { currentUserId: string })
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [resetPw, setResetPw] = useState<User | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -258,12 +352,20 @@ export default function AdminPanel({ currentUserId }: { currentUserId: string })
                         {isExp ? "Hide" : "View data"}
                       </button>
                       {!isMe && (
-                        <button
-                          onClick={() => setConfirmDelete(u.id)}
-                          className="btn-ghost text-xs hover:text-[#ff4444]"
-                        >
-                          Delete
-                        </button>
+                        <>
+                          <button
+                            onClick={() => setResetPw(u)}
+                            className="btn-ghost text-xs"
+                          >
+                            Reset pw
+                          </button>
+                          <button
+                            onClick={() => setConfirmDelete(u.id)}
+                            className="btn-ghost text-xs hover:text-[#ff4444]"
+                          >
+                            Delete
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -311,6 +413,14 @@ export default function AdminPanel({ currentUserId }: { currentUserId: string })
 
       {showCreate && (
         <CreateUserModal onClose={() => setShowCreate(false)} onCreated={refresh} />
+      )}
+
+      {resetPw && (
+        <ResetPasswordModal
+          userId={resetPw.id}
+          username={resetPw.username}
+          onClose={() => setResetPw(null)}
+        />
       )}
     </div>
   );

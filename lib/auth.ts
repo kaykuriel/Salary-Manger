@@ -87,3 +87,19 @@ export async function getUserData(
     return {};
   }
 }
+
+export async function resetUserPassword(
+  userId: string,
+  password: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    return res.json();
+  } catch {
+    return { ok: false, error: "Network error." };
+  }
+}
