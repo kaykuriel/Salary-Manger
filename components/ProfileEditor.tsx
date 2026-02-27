@@ -45,15 +45,20 @@ export default function ProfileEditor({ username: initialUsername }: { username:
     const file = e.target.files?.[0];
     if (!file) return;
     setAvatarLoading(true);
+    setMsg(null);
     try {
       const base64 = await resizeImage(file);
       setAvatar(base64);
-      await updateProfile({ avatar: base64 });
+      const res = await updateProfile({ avatar: base64 });
+      if (res.ok) {
+        setMsg({ ok: true, text: "Photo updated!" });
+      } else {
+        setMsg({ ok: false, text: res.error ?? "Failed to save photo." });
+      }
     } catch {
-      // ignore
+      setMsg({ ok: false, text: "Failed to process image." });
     } finally {
       setAvatarLoading(false);
-      // reset so same file can be re-selected
       if (fileRef.current) fileRef.current.value = "";
     }
   }
