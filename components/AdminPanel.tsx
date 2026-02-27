@@ -143,8 +143,8 @@ function UserDataView({ userId, username }: { userId: string; username: string }
             {months.map((mk) => {
               const m = data[mk];
               const salary = m?.salary ?? 0;
-              const cats = m?.categories ?? [];
-              const spent = cats.reduce((s, c) => s + (c.amount ?? 0), 0);
+              const cats = Array.isArray(m?.categories) ? m.categories : [];
+              const spent = cats.reduce((s: number, c: { amount?: number }) => s + (c.amount ?? 0), 0);
               const left = salary - spent;
               return (
                 <tr key={mk} className="border-b border-[#141414] hover:bg-white/[0.02] transition-colors">
