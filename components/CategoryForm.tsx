@@ -6,24 +6,34 @@ interface CategoryFormProps {
   onAdd: (name: string, amount: number) => void;
 }
 
+function formatMoneyInput(value: string): string {
+  // Strip everything except digits and the first dot
+  let clean = value.replace(/[^\d.]/g, "");
+  const dotIdx = clean.indexOf(".");
+  if (dotIdx !== -1) {
+    clean = clean.slice(0, dotIdx + 1) + clean.slice(dotIdx + 1).replace(/\./g, "");
+  }
+  const [intPart = "", decPart] = clean.split(".");
+  const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return decPart !== undefined ? `${intFormatted}.${decPart}` : intFormatted;
+}
+
 export default function CategoryForm({ onAdd }: CategoryFormProps) {
-  const [name,          setName]          = useState("");
-  const [amountRaw,     setAmountRaw]     = useState("");
-  const [amountFocused, setAmountFocused] = useState(false);
-  const [error,         setError]         = useState("");
+  const [name,      setName]      = useState("");
+  const [amountRaw, setAmountRaw] = useState("");
+  const [error,     setError]     = useState("");
   const nameRef = useRef<HTMLInputElement>(null);
 
-  const amountDisplay = amountFocused
-    ? amountRaw
-    : amountRaw && !isNaN(parseFloat(amountRaw.replace(/,/g, "")))
-    ? parseFloat(amountRaw.replace(/,/g, "")).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : amountRaw;
+  function handleAmountChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setAmountRaw(formatMoneyInput(e.target.value));
+    if (error) setError("");
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
     const num     = parseFloat(amountRaw.replace(/,/g, ""));
-    if (!trimmed)              { setError("Category name is required."); return; }
+    if (!trimmed)               { setError("Category name is required."); return; }
     if (isNaN(num) || num <= 0) { setError("Enter a valid amount greater than 0."); return; }
     onAdd(trimmed, num);
     setName("");
@@ -54,10 +64,8 @@ export default function CategoryForm({ onAdd }: CategoryFormProps) {
             <input
               type="text"
               inputMode="decimal"
-              value={amountDisplay}
-              onChange={(e) => { setAmountRaw(e.target.value); if (error) setError(""); }}
-              onFocus={() => setAmountFocused(true)}
-              onBlur={() => setAmountFocused(false)}
+              value={amountRaw}
+              onChange={handleAmountChange}
               onKeyDown={(e) => { if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault(); }}
               placeholder="0.00"
               className="field w-32 !pl-7"

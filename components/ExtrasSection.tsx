@@ -14,6 +14,17 @@ function fmt(v: number) {
   return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function formatMoneyInput(value: string): string {
+  let clean = value.replace(/[^\d.]/g, "");
+  const dotIdx = clean.indexOf(".");
+  if (dotIdx !== -1) {
+    clean = clean.slice(0, dotIdx + 1) + clean.slice(dotIdx + 1).replace(/\./g, "");
+  }
+  const [intPart = "", decPart] = clean.split(".");
+  const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return decPart !== undefined ? `${intFormatted}.${decPart}` : intFormatted;
+}
+
 export default function ExtrasSection({ extras, onAdd, onDelete }: ExtrasSectionProps) {
   const [name, setName] = useState("");
   const [amountRaw, setAmountRaw] = useState("");
@@ -62,7 +73,7 @@ export default function ExtrasSection({ extras, onAdd, onDelete }: ExtrasSection
               type="text"
               inputMode="decimal"
               value={amountRaw}
-              onChange={(e) => { setAmountRaw(e.target.value); if (error) setError(""); }}
+              onChange={(e) => { setAmountRaw(formatMoneyInput(e.target.value)); if (error) setError(""); }}
               onKeyDown={handleKeyDown}
               placeholder="0.00"
               className="field w-32 !pl-7"

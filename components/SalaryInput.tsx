@@ -12,10 +12,21 @@ export default function SalaryInput({ salary, onSave }: SalaryInputProps) {
   const [raw, setRaw] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
+  function formatMoneyInput(value: string): string {
+    let clean = value.replace(/[^\d.]/g, "");
+    const dotIdx = clean.indexOf(".");
+    if (dotIdx !== -1) {
+      clean = clean.slice(0, dotIdx + 1) + clean.slice(dotIdx + 1).replace(/\./g, "");
+    }
+    const [intPart = "", decPart] = clean.split(".");
+    const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return decPart !== undefined ? `${intFormatted}.${decPart}` : intFormatted;
+  }
+
   // Sync display when salary changes from outside (month navigation)
   useEffect(() => {
     if (!focused) {
-      setRaw(salary > 0 ? String(salary) : "");
+      setRaw(salary > 0 ? salary.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "");
     }
   }, [salary, focused]);
 
@@ -27,7 +38,7 @@ export default function SalaryInput({ salary, onSave }: SalaryInputProps) {
 
   function handleFocus() {
     setFocused(true);
-    setRaw(salary > 0 ? String(salary) : "");
+    setRaw(salary > 0 ? salary.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "");
     setTimeout(() => inputRef.current?.select(), 0);
   }
 
@@ -37,14 +48,17 @@ export default function SalaryInput({ salary, onSave }: SalaryInputProps) {
     if (!isNaN(num) && num >= 0) {
       onSave(num);
     } else {
-      setRaw(salary > 0 ? String(salary) : "");
+      setRaw(salary > 0 ? salary.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "");
     }
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (["e", "E", "+"].includes(e.key)) e.preventDefault();
     if (e.key === "Enter") { e.preventDefault(); commit(); inputRef.current?.blur(); }
-    if (e.key === "Escape") { setRaw(salary > 0 ? String(salary) : ""); inputRef.current?.blur(); }
+    if (e.key === "Escape") {
+      setRaw(salary > 0 ? salary.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "");
+      inputRef.current?.blur();
+    }
   }
 
   return (
@@ -61,7 +75,7 @@ export default function SalaryInput({ salary, onSave }: SalaryInputProps) {
           type="text"
           inputMode="decimal"
           value={displayValue}
-          onChange={(e) => setRaw(e.target.value)}
+          onChange={(e) => setRaw(formatMoneyInput(e.target.value))}
           onFocus={handleFocus}
           onBlur={commit}
           onKeyDown={handleKeyDown}
