@@ -6,34 +6,24 @@ interface CategoryFormProps {
   onAdd: (name: string, amount: number) => void;
 }
 
-function formatAmount(raw: string): string {
-  const num = parseFloat(raw);
-  if (isNaN(num)) return raw;
-  return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
 export default function CategoryForm({ onAdd }: CategoryFormProps) {
-  const [name, setName] = useState("");
-  const [amountRaw, setAmountRaw] = useState("");
+  const [name,          setName]          = useState("");
+  const [amountRaw,     setAmountRaw]     = useState("");
   const [amountFocused, setAmountFocused] = useState(false);
-  const [error, setError] = useState("");
+  const [error,         setError]         = useState("");
   const nameRef = useRef<HTMLInputElement>(null);
 
   const amountDisplay = amountFocused
     ? amountRaw
-    : amountRaw !== "" && !isNaN(parseFloat(amountRaw))
-    ? formatAmount(amountRaw)
+    : amountRaw && !isNaN(parseFloat(amountRaw.replace(/,/g, "")))
+    ? parseFloat(amountRaw.replace(/,/g, "")).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : amountRaw;
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault();
-  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
-    const num = parseFloat(amountRaw);
-    if (!trimmed) { setError("Category name is required."); return; }
+    const num     = parseFloat(amountRaw.replace(/,/g, ""));
+    if (!trimmed)              { setError("Category name is required."); return; }
     if (isNaN(num) || num <= 0) { setError("Enter a valid amount greater than 0."); return; }
     onAdd(trimmed, num);
     setName("");
@@ -62,19 +52,18 @@ export default function CategoryForm({ onAdd }: CategoryFormProps) {
               $
             </span>
             <input
-              type={amountFocused ? "number" : "text"}
+              type="text"
+              inputMode="decimal"
               value={amountDisplay}
               onChange={(e) => { setAmountRaw(e.target.value); if (error) setError(""); }}
               onFocus={() => setAmountFocused(true)}
               onBlur={() => setAmountFocused(false)}
-              onKeyDown={handleKeyDown}
+              onKeyDown={(e) => { if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault(); }}
               placeholder="0.00"
               className="field w-32 !pl-7"
             />
           </div>
-          <button type="submit" className="btn">
-            Add
-          </button>
+          <button type="submit" className="btn">Add</button>
         </div>
         {error && <p className="text-[#ff4444] text-xs">{error}</p>}
       </form>

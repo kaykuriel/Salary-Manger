@@ -3,21 +3,21 @@
 import { useState, useEffect, useCallback } from "react";
 
 const FIAT = [
-  { code: "USD", name: "US Dollar"       },
-  { code: "EUR", name: "Euro"            },
-  { code: "GBP", name: "British Pound"   },
-  { code: "BRL", name: "Brazilian Real"  },
-  { code: "JPY", name: "Japanese Yen"    },
-  { code: "CAD", name: "Canadian Dollar" },
+  { code: "USD", name: "US Dollar"        },
+  { code: "EUR", name: "Euro"             },
+  { code: "GBP", name: "British Pound"    },
+  { code: "BRL", name: "Brazilian Real"   },
+  { code: "JPY", name: "Japanese Yen"     },
+  { code: "CAD", name: "Canadian Dollar"  },
   { code: "AUD", name: "Australian Dollar"},
-  { code: "CHF", name: "Swiss Franc"     },
-  { code: "MXN", name: "Mexican Peso"    },
-  { code: "CNY", name: "Chinese Yuan"    },
-  { code: "KRW", name: "Korean Won"      },
-  { code: "INR", name: "Indian Rupee"    },
-  { code: "SEK", name: "Swedish Krona"   },
-  { code: "NOK", name: "Norwegian Krone" },
-  { code: "PLN", name: "Polish Złoty"    },
+  { code: "CHF", name: "Swiss Franc"      },
+  { code: "MXN", name: "Mexican Peso"     },
+  { code: "CNY", name: "Chinese Yuan"     },
+  { code: "KRW", name: "Korean Won"       },
+  { code: "INR", name: "Indian Rupee"     },
+  { code: "SEK", name: "Swedish Krona"    },
+  { code: "NOK", name: "Norwegian Krone"  },
+  { code: "PLN", name: "Polish Złoty"     },
 ];
 
 const CRYPTO = [
@@ -33,14 +33,14 @@ const CRYPTO = [
   { code: "MATIC", name: "Polygon",   geckoId: "matic-network" },
 ];
 
-// usdValue[code] = how many USD is 1 unit of `code`
 type RatesMap = Record<string, number>;
 
 function fmtResult(v: number, code: string): string {
   const isCrypto = CRYPTO.some((c) => c.code === code);
   if (isCrypto) {
-    if (v >= 1)  return v.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
-    return v.toLocaleString("en-US", { minimumFractionDigits: 8, maximumFractionDigits: 8 });
+    return v >= 1
+      ? v.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })
+      : v.toLocaleString("en-US", { minimumFractionDigits: 8, maximumFractionDigits: 8 });
   }
   return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -51,15 +51,29 @@ function fmtPrice(v: number): string {
   return v.toLocaleString("en-US", { minimumFractionDigits: 6, maximumFractionDigits: 6 });
 }
 
+// Shared select style — dark bg so it stays dark even when focused/open
+const SELECT_CLS = "w-40 flex-shrink-0 cursor-pointer bg-[#0d0d0d] border border-[#333] rounded-lg px-3 py-2 text-sm text-white outline-none transition-all duration-150 focus:border-[#0070f3] focus:ring-1 focus:ring-[#0070f3]/20";
+
 export default function CurrencyConverter() {
-  const [rates, setRates] = useState<RatesMap | null>(null);
+  const [rates,    setRates]    = useState<RatesMap | null>(null);
   const [fetching, setFetching] = useState(true);
-  const [error, setError] = useState("");
+  const [error,    setError]    = useState("");
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
-  const [amount, setAmount] = useState("1");
+  // Amount input
+  const [amountRaw, setAmountRaw] = useState("1");
+  const [amountFocused, setAmountFocused] = useState(false);
+
   const [from, setFrom] = useState("USD");
-  const [to, setTo] = useState("BRL");
+  const [to,   setTo]   = useState("BRL");
+
+  const amountNum = parseFloat(amountRaw.replace(/,/g, "")) || 0;
+
+  const amountDisplay = amountFocused
+    ? amountRaw
+    : amountNum > 0
+    ? amountNum.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : amountRaw;
 
   const fetchRates = useCallback(async () => {
     setFetching(true);
@@ -70,27 +84,21 @@ export default function CurrencyConverter() {
         fetch("https://api.frankfurter.app/latest?from=USD"),
         fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${geckoIds}&vs_currencies=usd`),
       ]);
-
       const fiatData   = await fiatRes.json();
       const cryptoData = await cryptoRes.json();
 
       const map: RatesMap = { USD: 1 };
-
-      // Frankfurter: rates.EUR = 0.92 → 1 USD = 0.92 EUR → 1 EUR = 1/0.92 USD
       for (const [code, rate] of Object.entries(fiatData.rates as Record<string, number>)) {
         map[code] = 1 / rate;
       }
-
-      // CoinGecko: data.bitcoin.usd = 65000 → 1 BTC = 65000 USD
       for (const crypto of CRYPTO) {
         const price = (cryptoData[crypto.geckoId] as { usd?: number })?.usd;
         if (price) map[crypto.code] = price;
       }
-
       setRates(map);
       setUpdatedAt(new Date());
     } catch {
-      setError("Could not fetch rates. Check your connection and try again.");
+      setError("Could not fetch rates. Check your connection.");
     } finally {
       setFetching(false);
     }
@@ -98,17 +106,15 @@ export default function CurrencyConverter() {
 
   useEffect(() => { fetchRates(); }, [fetchRates]);
 
-  function convert(amt: number, fromCode: string, toCode: string): number | null {
+  function convert(amt: number, f: string, t: string): number | null {
     if (!rates) return null;
-    const a = rates[fromCode];
-    const b = rates[toCode];
+    const a = rates[f], b = rates[t];
     if (!a || !b) return null;
     return (amt * a) / b;
   }
 
-  const parsedAmount = parseFloat(amount.replace(/,/g, "")) || 0;
-  const result       = convert(parsedAmount, from, to);
-  const unitRate     = convert(1, from, to);
+  const result   = convert(amountNum, from, to);
+  const unitRate = convert(1, from, to);
 
   const updatedAgo = updatedAt ? (() => {
     const s = Math.floor((Date.now() - updatedAt.getTime()) / 1000);
@@ -117,15 +123,24 @@ export default function CurrencyConverter() {
     return `${Math.floor(s / 3600)}h ago`;
   })() : "";
 
+  const selectContent = (
+    <>
+      <optgroup label="── Fiat ──">
+        {FIAT.map((f) => <option key={f.code} value={f.code}>{f.code} — {f.name}</option>)}
+      </optgroup>
+      <optgroup label="── Crypto ──">
+        {CRYPTO.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
+      </optgroup>
+    </>
+  );
+
   return (
     <main className="py-8 px-4">
       <div className="max-w-2xl mx-auto flex flex-col gap-5">
 
-        {/* Title bar */}
+        {/* Title */}
         <div className="flex items-center justify-center gap-2 py-1">
-          <span className="text-base font-semibold text-white tracking-tight select-none">
-            Converter
-          </span>
+          <span className="text-base font-semibold text-white tracking-tight select-none">Converter</span>
           <button
             onClick={fetchRates}
             disabled={fetching}
@@ -139,84 +154,58 @@ export default function CurrencyConverter() {
           )}
         </div>
 
-        {/* Main converter card */}
+        {/* Converter card */}
         <div className="card p-5 hover:border-[#444]">
           {error && <p className="text-[#ff4444] text-xs mb-4">{error}</p>}
-
           <div className="flex flex-col gap-3">
-            {/* FROM row */}
+
+            {/* FROM */}
             <div className="flex gap-2">
               <input
                 type="text"
                 inputMode="decimal"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="1"
+                value={amountDisplay}
+                onChange={(e) => setAmountRaw(e.target.value)}
+                onFocus={() => setAmountFocused(true)}
+                onBlur={() => setAmountFocused(false)}
+                onKeyDown={(e) => { if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault(); }}
+                placeholder="1.00"
                 className="field text-xl font-semibold"
               />
-              <select
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                className="field w-40 flex-shrink-0 cursor-pointer"
-              >
-                <optgroup label="── Fiat ──">
-                  {FIAT.map((f) => (
-                    <option key={f.code} value={f.code}>{f.code} — {f.name}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="── Crypto ──">
-                  {CRYPTO.map((c) => (
-                    <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
-                  ))}
-                </optgroup>
+              <select value={from} onChange={(e) => setFrom(e.target.value)} className={SELECT_CLS}>
+                {selectContent}
               </select>
             </div>
 
-            {/* Swap divider */}
+            {/* Swap */}
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px bg-[#1e1e1e]" />
               <button
                 onClick={() => { setFrom(to); setTo(from); }}
                 className="text-[#444] hover:text-white transition-all duration-150 w-8 h-8 flex items-center justify-center border border-[#222] rounded-lg text-sm active:scale-90 hover:border-[#0070f3]"
-                title="Swap currencies"
+                title="Swap"
               >
                 ⇅
               </button>
               <div className="flex-1 h-px bg-[#1e1e1e]" />
             </div>
 
-            {/* TO row */}
+            {/* TO */}
             <div className="flex gap-2">
               <div className="flex-1 bg-[#0a0a0a] border border-[#222] rounded-lg px-3 py-2 flex items-center min-h-[42px]">
                 {fetching ? (
                   <span className="text-[#444] text-sm">Loading…</span>
                 ) : result !== null ? (
-                  <span className="text-xl font-semibold text-white tabular-nums">
-                    {fmtResult(result, to)}
-                  </span>
+                  <span className="text-xl font-semibold text-white tabular-nums">{fmtResult(result, to)}</span>
                 ) : (
                   <span className="text-[#444] text-sm">—</span>
                 )}
               </div>
-              <select
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                className="field w-40 flex-shrink-0 cursor-pointer"
-              >
-                <optgroup label="── Fiat ──">
-                  {FIAT.map((f) => (
-                    <option key={f.code} value={f.code}>{f.code} — {f.name}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="── Crypto ──">
-                  {CRYPTO.map((c) => (
-                    <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
-                  ))}
-                </optgroup>
+              <select value={to} onChange={(e) => setTo(e.target.value)} className={SELECT_CLS}>
+                {selectContent}
               </select>
             </div>
 
-            {/* Unit rate */}
             {unitRate !== null && !fetching && (
               <p className="text-xs text-[#555] text-center">
                 1 {from} = {fmtResult(unitRate, to)} {to}
@@ -239,7 +228,6 @@ export default function CurrencyConverter() {
                     key={c.code}
                     className={`px-5 py-3.5 flex items-center justify-between hover:bg-white/[0.02] transition-colors duration-150 cursor-pointer ${i > 0 ? "border-t border-[#1a1a1a]" : ""}`}
                     onClick={() => { setFrom(c.code); setTo("USD"); }}
-                    title={`Convert ${c.code}`}
                   >
                     <div className="flex items-center gap-2.5">
                       <span className="text-sm font-semibold text-white w-14">{c.code}</span>
@@ -255,7 +243,7 @@ export default function CurrencyConverter() {
           </div>
         )}
 
-        {/* Fiat rates vs USD */}
+        {/* Fiat rates */}
         {rates && (
           <div className="card overflow-hidden hover:border-[#444]">
             <div className="px-5 py-3 border-b border-[#222]">
@@ -263,17 +251,15 @@ export default function CurrencyConverter() {
             </div>
             <div className="grid grid-cols-2">
               {FIAT.filter((f) => f.code !== "USD").map((f, i) => {
-                const usdVal  = rates[f.code];
-                const perUsd  = usdVal ? 1 / usdVal : null; // how much foreign per 1 USD
+                const perUsd = rates[f.code] ? 1 / rates[f.code] : null;
                 return (
                   <div
                     key={f.code}
                     className={`px-5 py-3 flex items-center justify-between hover:bg-white/[0.02] transition-colors duration-150 cursor-pointer
                       ${i % 2 === 1 ? "border-l border-[#1a1a1a]" : ""}
-                      ${i >= 2 ? "border-t border-[#1a1a1a]" : ""}
+                      ${i >= 2    ? "border-t border-[#1a1a1a]" : ""}
                     `}
                     onClick={() => { setFrom("USD"); setTo(f.code); }}
-                    title={`Convert USD to ${f.code}`}
                   >
                     <span className="text-sm text-[#888]">{f.code}</span>
                     <span className="text-sm font-semibold tabular-nums text-white">
@@ -287,7 +273,6 @@ export default function CurrencyConverter() {
             </div>
           </div>
         )}
-
       </div>
     </main>
   );

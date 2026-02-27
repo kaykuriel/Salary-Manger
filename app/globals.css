@@ -4,9 +4,9 @@
 
 /* ─── Components (lower precedence than Tailwind utilities) ─ */
 @layer components {
-  /* Base input — Tailwind utilities applied on top will always win */
+  /* Base input */
   .field {
-    @apply w-full bg-transparent border border-[#333] rounded-lg px-3 py-2
+    @apply w-full bg-[#0d0d0d] border border-[#333] rounded-lg px-3 py-2
            text-sm text-white placeholder-[#555] outline-none
            transition-all duration-150;
   }
@@ -34,6 +34,13 @@
     @apply text-[#888] hover:text-white hover:bg-white/5 active:scale-[0.97]
            text-xs rounded-md transition-all duration-150 px-3 py-1.5;
   }
+}
+
+/* ─── Select options — dark background so it doesn't flash white ─ */
+select option,
+select optgroup {
+  background-color: #0d0d0d;
+  color: #ffffff;
 }
 
 /* ─── Scrollbar ─────────────────────────────────────────────── */
