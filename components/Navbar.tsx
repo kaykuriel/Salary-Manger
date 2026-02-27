@@ -85,10 +85,10 @@ export default function Navbar({ session }: { session: Session }) {
         </div>
       </header>
 
-      {/* Dropdown */}
+      {/* Dropdown — compact card anchored to the hamburger button */}
       {open && (
-        <div className="absolute left-0 right-0 bg-[#080808] border-b border-[#1a1a1a] shadow-2xl shadow-black/60">
-          <div className="max-w-2xl mx-auto px-4 py-3 flex flex-col gap-1">
+        <div className="absolute right-4 top-[calc(100%+6px)] w-52 bg-[#0d0d0d] border border-[#222] rounded-xl shadow-2xl shadow-black/80 overflow-hidden">
+          <div className="p-1.5 flex flex-col gap-0.5">
             {/* Nav items */}
             {NAV.map((item) => {
               const active = pathname === item.href;
@@ -96,9 +96,9 @@ export default function Navbar({ session }: { session: Session }) {
                 <button
                   key={item.href}
                   onClick={() => go(item.href)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 text-left w-full
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150 text-left w-full
                     ${active
-                      ? "bg-white/[0.06] text-white"
+                      ? "bg-white/[0.07] text-white"
                       : "text-[#666] hover:text-white hover:bg-white/[0.04]"
                     }`}
                 >
@@ -114,9 +114,9 @@ export default function Navbar({ session }: { session: Session }) {
             {session.role === "admin" && (
               <button
                 onClick={() => go("/admin")}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 text-left w-full
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150 text-left w-full
                   ${pathname === "/admin"
-                    ? "bg-white/[0.06] text-white"
+                    ? "bg-white/[0.07] text-white"
                     : "text-[#666] hover:text-white hover:bg-white/[0.04]"
                   }`}
               >
@@ -134,7 +134,7 @@ export default function Navbar({ session }: { session: Session }) {
             {/* Sign out */}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[#666] hover:text-[#ff4444] hover:bg-[#ff4444]/[0.06] transition-all duration-150 text-left w-full"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-[#666] hover:text-[#ff4444] hover:bg-[#ff4444]/[0.06] transition-all duration-150 text-left w-full"
             >
               <span className="text-base w-5 text-center opacity-60">→</span>
               Sign out
