@@ -1,19 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import MonthNav from "./MonthNav";
 import SalaryInput from "./SalaryInput";
 import CategoryForm from "./CategoryForm";
 import CategoryList from "./CategoryList";
 import SummaryCards from "./SummaryCards";
 import ExpenseChart from "./ExpenseChart";
-import { getUserDataKey } from "@/lib/auth";
 
 type Category = { id: string; name: string; amount: number; color: string };
 type MonthData = { salary: number; categories: Category[] };
-type AppData = { [monthKey: string]: MonthData };
 
-// Colorful palette — works on black background
 const PALETTE = [
   "#0070f3", "#50e3c2", "#f5a623", "#7928ca",
   "#ff4444", "#ff0080", "#79ffe1", "#0070f3",
@@ -29,39 +26,66 @@ function shiftMonth(monthKey: string, delta: number) {
   return getMonthKey(new Date(y, m - 1 + delta, 1));
 }
 
-function loadData(key: string): AppData {
-  if (typeof window === "undefined") return {};
-  try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : {}; }
-  catch { return {}; }
-}
-
-function saveData(key: string, data: AppData) {
-  localStorage.setItem(key, JSON.stringify(data));
-}
-
 const empty = (): MonthData => ({ salary: 0, categories: [] });
 
 export default function SalaryManager({ userId }: { userId: string }) {
-  const storageKey = getUserDataKey(userId);
   const [monthKey, setMonthKey] = useState(() => getMonthKey(new Date()));
-  const [appData, setAppData] = useState<AppData>({});
+  const [monthData, setMonthData] = useState<MonthData>(empty());
   const [hydrated, setHydrated] = useState(false);
+  // Prevents saving back data we just fetched from the server
+  const justLoadedRef = useRef(false);
 
-  useEffect(() => { setAppData(loadData(storageKey)); setHydrated(true); }, [storageKey]);
-  useEffect(() => { if (hydrated) saveData(storageKey, appData); }, [appData, hydrated, storageKey]);
+  // Fetch this month's data from the API whenever monthKey changes
+  useEffect(() => {
+    let cancelled = false;
+    setHydrated(false);
+    justLoadedRef.current = false;
 
-  const month: MonthData = appData[monthKey] ?? empty();
+    fetch(`/api/data/${monthKey}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        justLoadedRef.current = true;
+        setMonthData(data ?? empty());
+        setHydrated(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        justLoadedRef.current = true;
+        setMonthData(empty());
+        setHydrated(true);
+      });
 
-  const update = useCallback((fn: (m: MonthData) => MonthData) => {
-    setAppData((prev) => ({ ...prev, [monthKey]: fn(prev[monthKey] ?? empty()) }));
+    return () => { cancelled = true; };
   }, [monthKey]);
 
-  const totalSpent = month.categories.reduce((s, c) => s + c.amount, 0);
+  // Debounced save — skips the first run after a fresh load
+  useEffect(() => {
+    if (!hydrated) return;
+    if (justLoadedRef.current) {
+      justLoadedRef.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      fetch(`/api/data/${monthKey}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(monthData),
+      }).catch(() => {});
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [monthData, hydrated, monthKey]);
+
+  const update = useCallback((fn: (m: MonthData) => MonthData) => {
+    setMonthData((prev) => fn(prev));
+  }, []);
+
+  const totalSpent = monthData.categories.reduce((s, c) => s + c.amount, 0);
 
   if (!hydrated) {
     return (
       <main className="min-h-screen flex items-center justify-center">
-        <span className="text-app-muted text-sm">Loading…</span>
+        <span className="text-[#555] text-sm">Loading…</span>
       </main>
     );
   }
@@ -74,25 +98,32 @@ export default function SalaryManager({ userId }: { userId: string }) {
           onPrev={() => setMonthKey((k) => shiftMonth(k, -1))}
           onNext={() => setMonthKey((k) => shiftMonth(k, 1))}
         />
-        <SalaryInput salary={month.salary} onSave={(v) => update((m) => ({ ...m, salary: v }))} />
-        <SummaryCards salary={month.salary} spent={totalSpent} />
+        <SalaryInput salary={monthData.salary} onSave={(v) => update((m) => ({ ...m, salary: v }))} />
+        <SummaryCards salary={monthData.salary} spent={totalSpent} />
         <CategoryForm
           onAdd={(name, amount) =>
             update((m) => ({
               ...m,
               categories: [
                 ...m.categories,
-                { id: crypto.randomUUID(), name, amount, color: PALETTE[m.categories.length % PALETTE.length] },
+                {
+                  id: crypto.randomUUID(),
+                  name,
+                  amount,
+                  color: PALETTE[m.categories.length % PALETTE.length],
+                },
               ],
             }))
           }
         />
         <CategoryList
-          categories={month.categories}
-          salary={month.salary}
-          onDelete={(id) => update((m) => ({ ...m, categories: m.categories.filter((c) => c.id !== id) }))}
+          categories={monthData.categories}
+          salary={monthData.salary}
+          onDelete={(id) =>
+            update((m) => ({ ...m, categories: m.categories.filter((c) => c.id !== id) }))
+          }
         />
-        <ExpenseChart categories={month.categories} salary={month.salary} />
+        <ExpenseChart categories={monthData.categories} salary={monthData.salary} />
       </div>
     </main>
   );

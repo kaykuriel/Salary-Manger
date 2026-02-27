@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createUser, getSession, getUsers } from "@/lib/auth";
+import { createUser, getSession } from "@/lib/auth";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -16,8 +16,16 @@ export default function RegisterPage() {
   const [isFirst, setIsFirst] = useState(false);
 
   useEffect(() => {
-    if (getSession()) { router.replace("/dashboard"); return; }
-    setIsFirst(getUsers().length === 0);
+    async function init() {
+      const s = await getSession();
+      if (s) { router.replace("/dashboard"); return; }
+      const res = await fetch("/api/auth/first").catch(() => null);
+      if (res?.ok) {
+        const { isFirst } = await res.json();
+        setIsFirst(isFirst);
+      }
+    }
+    init();
   }, [router]);
 
   function clear() { setError(""); }
@@ -36,7 +44,6 @@ export default function RegisterPage() {
     setLoading(false);
     if (!res.ok) { setError(res.error ?? "Failed."); return; }
 
-    // Go to login so the user signs in manually
     router.push("/login?registered=1");
   }
 

@@ -107,13 +107,10 @@ type MonthEntry = {
 function UserDataView({ userId, username }: { userId: string; username: string }) {
   const [data, setData] = useState<Record<string, MonthEntry> | null>(null);
 
-  // Load data client-side only after mount
   useEffect(() => {
-    try {
-      setData(getUserData(userId) as Record<string, MonthEntry>);
-    } catch {
-      setData({});
-    }
+    getUserData(userId)
+      .then((d) => setData(d as Record<string, MonthEntry>))
+      .catch(() => setData({}));
   }, [userId]);
 
   if (data === null) {
@@ -179,11 +176,11 @@ export default function AdminPanel({ currentUserId }: { currentUserId: string })
 
   useEffect(() => {
     setMounted(true);
-    setUsers(getUsers());
+    getUsers().then(setUsers);
   }, []);
 
-  function refresh() {
-    setUsers(getUsers());
+  async function refresh() {
+    setUsers(await getUsers());
   }
 
   if (!mounted) {
@@ -292,8 +289,8 @@ export default function AdminPanel({ currentUserId }: { currentUserId: string })
                           Cancel
                         </button>
                         <button
-                          onClick={() => {
-                            deleteUser(u.id);
+                          onClick={async () => {
+                            await deleteUser(u.id);
                             setConfirmDelete(null);
                             setExpanded(null);
                             refresh();

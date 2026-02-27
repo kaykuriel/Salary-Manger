@@ -12,23 +12,22 @@ export default function DashboardPage() {
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
-    const s = getSession();
-    if (!s) { router.replace("/login"); return; }
-    setSession(s);
+    getSession().then((s) => {
+      if (!s) { router.replace("/login"); return; }
+      setSession(s);
+    });
   }, [router]);
 
   if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-app-muted text-xs tracking-widest cursor">
-          &gt; Loading
-        </p>
+        <p className="text-[#555] text-xs">Loading…</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-app-bg">
+    <div className="min-h-screen bg-black">
       <Navbar session={session} />
       <SalaryManager userId={session.userId} />
     </div>

@@ -1,15 +1,15 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
-import { clearSession } from "@/lib/auth";
+import { logoutUser } from "@/lib/auth";
 import type { Session } from "@/lib/auth";
 
 export default function Navbar({ session }: { session: Session }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  function handleLogout() {
-    clearSession();
+  async function handleLogout() {
+    await logoutUser();
     router.push("/login");
   }
 

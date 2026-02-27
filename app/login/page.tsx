@@ -15,7 +15,9 @@ function LoginForm() {
   const registered = params.get("registered") === "1";
 
   useEffect(() => {
-    if (getSession()) router.replace("/dashboard");
+    getSession().then((s) => {
+      if (s) router.replace("/dashboard");
+    });
   }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
