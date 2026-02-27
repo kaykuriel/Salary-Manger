@@ -82,6 +82,7 @@ export default function ExpenseChart({ categories, salary }: ExpenseChartProps) 
               paddingAngle={3}
               dataKey="value"
               strokeWidth={0}
+              isAnimationActive={false}
             >
               {data.map((entry, index) => (
                 <Cell
