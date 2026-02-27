@@ -1,0 +1,294 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+
+const FIAT = [
+  { code: "USD", name: "US Dollar"       },
+  { code: "EUR", name: "Euro"            },
+  { code: "GBP", name: "British Pound"   },
+  { code: "BRL", name: "Brazilian Real"  },
+  { code: "JPY", name: "Japanese Yen"    },
+  { code: "CAD", name: "Canadian Dollar" },
+  { code: "AUD", name: "Australian Dollar"},
+  { code: "CHF", name: "Swiss Franc"     },
+  { code: "MXN", name: "Mexican Peso"    },
+  { code: "CNY", name: "Chinese Yuan"    },
+  { code: "KRW", name: "Korean Won"      },
+  { code: "INR", name: "Indian Rupee"    },
+  { code: "SEK", name: "Swedish Krona"   },
+  { code: "NOK", name: "Norwegian Krone" },
+  { code: "PLN", name: "Polish Złoty"    },
+];
+
+const CRYPTO = [
+  { code: "BTC",   name: "Bitcoin",   geckoId: "bitcoin"       },
+  { code: "ETH",   name: "Ethereum",  geckoId: "ethereum"      },
+  { code: "BNB",   name: "BNB",       geckoId: "binancecoin"   },
+  { code: "SOL",   name: "Solana",    geckoId: "solana"        },
+  { code: "XRP",   name: "XRP",       geckoId: "ripple"        },
+  { code: "ADA",   name: "Cardano",   geckoId: "cardano"       },
+  { code: "DOGE",  name: "Dogecoin",  geckoId: "dogecoin"      },
+  { code: "AVAX",  name: "Avalanche", geckoId: "avalanche-2"   },
+  { code: "DOT",   name: "Polkadot",  geckoId: "polkadot"      },
+  { code: "MATIC", name: "Polygon",   geckoId: "matic-network" },
+];
+
+// usdValue[code] = how many USD is 1 unit of `code`
+type RatesMap = Record<string, number>;
+
+function fmtResult(v: number, code: string): string {
+  const isCrypto = CRYPTO.some((c) => c.code === code);
+  if (isCrypto) {
+    if (v >= 1)  return v.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+    return v.toLocaleString("en-US", { minimumFractionDigits: 8, maximumFractionDigits: 8 });
+  }
+  return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtPrice(v: number): string {
+  if (v >= 1000) return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (v >= 1)    return v.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+  return v.toLocaleString("en-US", { minimumFractionDigits: 6, maximumFractionDigits: 6 });
+}
+
+export default function CurrencyConverter() {
+  const [rates, setRates] = useState<RatesMap | null>(null);
+  const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState("");
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+
+  const [amount, setAmount] = useState("1");
+  const [from, setFrom] = useState("USD");
+  const [to, setTo] = useState("BRL");
+
+  const fetchRates = useCallback(async () => {
+    setFetching(true);
+    setError("");
+    try {
+      const geckoIds = CRYPTO.map((c) => c.geckoId).join(",");
+      const [fiatRes, cryptoRes] = await Promise.all([
+        fetch("https://api.frankfurter.app/latest?from=USD"),
+        fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${geckoIds}&vs_currencies=usd`),
+      ]);
+
+      const fiatData   = await fiatRes.json();
+      const cryptoData = await cryptoRes.json();
+
+      const map: RatesMap = { USD: 1 };
+
+      // Frankfurter: rates.EUR = 0.92 → 1 USD = 0.92 EUR → 1 EUR = 1/0.92 USD
+      for (const [code, rate] of Object.entries(fiatData.rates as Record<string, number>)) {
+        map[code] = 1 / rate;
+      }
+
+      // CoinGecko: data.bitcoin.usd = 65000 → 1 BTC = 65000 USD
+      for (const crypto of CRYPTO) {
+        const price = (cryptoData[crypto.geckoId] as { usd?: number })?.usd;
+        if (price) map[crypto.code] = price;
+      }
+
+      setRates(map);
+      setUpdatedAt(new Date());
+    } catch {
+      setError("Could not fetch rates. Check your connection and try again.");
+    } finally {
+      setFetching(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchRates(); }, [fetchRates]);
+
+  function convert(amt: number, fromCode: string, toCode: string): number | null {
+    if (!rates) return null;
+    const a = rates[fromCode];
+    const b = rates[toCode];
+    if (!a || !b) return null;
+    return (amt * a) / b;
+  }
+
+  const parsedAmount = parseFloat(amount.replace(/,/g, "")) || 0;
+  const result       = convert(parsedAmount, from, to);
+  const unitRate     = convert(1, from, to);
+
+  const updatedAgo = updatedAt ? (() => {
+    const s = Math.floor((Date.now() - updatedAt.getTime()) / 1000);
+    if (s < 60) return "just now";
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    return `${Math.floor(s / 3600)}h ago`;
+  })() : "";
+
+  return (
+    <main className="py-8 px-4">
+      <div className="max-w-2xl mx-auto flex flex-col gap-5">
+
+        {/* Title bar */}
+        <div className="flex items-center justify-center gap-2 py-1">
+          <span className="text-base font-semibold text-white tracking-tight select-none">
+            Converter
+          </span>
+          <button
+            onClick={fetchRates}
+            disabled={fetching}
+            className={`w-6 h-6 flex items-center justify-center rounded text-base transition-all active:scale-90 ${fetching ? "animate-spin text-[#0070f3]" : "text-[#333] hover:text-[#888]"}`}
+            title="Refresh rates"
+          >
+            ↻
+          </button>
+          {updatedAt && !fetching && (
+            <span className="text-xs text-[#444]">· {updatedAgo}</span>
+          )}
+        </div>
+
+        {/* Main converter card */}
+        <div className="card p-5 hover:border-[#444]">
+          {error && <p className="text-[#ff4444] text-xs mb-4">{error}</p>}
+
+          <div className="flex flex-col gap-3">
+            {/* FROM row */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="1"
+                className="field text-xl font-semibold"
+              />
+              <select
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                className="field w-40 flex-shrink-0 cursor-pointer"
+              >
+                <optgroup label="── Fiat ──">
+                  {FIAT.map((f) => (
+                    <option key={f.code} value={f.code}>{f.code} — {f.name}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="── Crypto ──">
+                  {CRYPTO.map((c) => (
+                    <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+
+            {/* Swap divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-[#1e1e1e]" />
+              <button
+                onClick={() => { setFrom(to); setTo(from); }}
+                className="text-[#444] hover:text-white transition-all duration-150 w-8 h-8 flex items-center justify-center border border-[#222] rounded-lg text-sm active:scale-90 hover:border-[#0070f3]"
+                title="Swap currencies"
+              >
+                ⇅
+              </button>
+              <div className="flex-1 h-px bg-[#1e1e1e]" />
+            </div>
+
+            {/* TO row */}
+            <div className="flex gap-2">
+              <div className="flex-1 bg-[#0a0a0a] border border-[#222] rounded-lg px-3 py-2 flex items-center min-h-[42px]">
+                {fetching ? (
+                  <span className="text-[#444] text-sm">Loading…</span>
+                ) : result !== null ? (
+                  <span className="text-xl font-semibold text-white tabular-nums">
+                    {fmtResult(result, to)}
+                  </span>
+                ) : (
+                  <span className="text-[#444] text-sm">—</span>
+                )}
+              </div>
+              <select
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                className="field w-40 flex-shrink-0 cursor-pointer"
+              >
+                <optgroup label="── Fiat ──">
+                  {FIAT.map((f) => (
+                    <option key={f.code} value={f.code}>{f.code} — {f.name}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="── Crypto ──">
+                  {CRYPTO.map((c) => (
+                    <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+
+            {/* Unit rate */}
+            {unitRate !== null && !fetching && (
+              <p className="text-xs text-[#555] text-center">
+                1 {from} = {fmtResult(unitRate, to)} {to}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Crypto prices */}
+        {rates && (
+          <div className="card overflow-hidden hover:border-[#444]">
+            <div className="px-5 py-3 border-b border-[#222]">
+              <p className="text-xs font-mono uppercase tracking-widest text-[#666]">Crypto Prices (USD)</p>
+            </div>
+            <ul>
+              {CRYPTO.map((c, i) => {
+                const price = rates[c.code];
+                return (
+                  <li
+                    key={c.code}
+                    className={`px-5 py-3.5 flex items-center justify-between hover:bg-white/[0.02] transition-colors duration-150 cursor-pointer ${i > 0 ? "border-t border-[#1a1a1a]" : ""}`}
+                    onClick={() => { setFrom(c.code); setTo("USD"); }}
+                    title={`Convert ${c.code}`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-sm font-semibold text-white w-14">{c.code}</span>
+                      <span className="text-xs text-[#555]">{c.name}</span>
+                    </div>
+                    <span className="text-sm font-semibold tabular-nums text-[#50e3c2]">
+                      ${price ? fmtPrice(price) : "—"}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
+        {/* Fiat rates vs USD */}
+        {rates && (
+          <div className="card overflow-hidden hover:border-[#444]">
+            <div className="px-5 py-3 border-b border-[#222]">
+              <p className="text-xs font-mono uppercase tracking-widest text-[#666]">Fiat Rates (per 1 USD)</p>
+            </div>
+            <div className="grid grid-cols-2">
+              {FIAT.filter((f) => f.code !== "USD").map((f, i) => {
+                const usdVal  = rates[f.code];
+                const perUsd  = usdVal ? 1 / usdVal : null; // how much foreign per 1 USD
+                return (
+                  <div
+                    key={f.code}
+                    className={`px-5 py-3 flex items-center justify-between hover:bg-white/[0.02] transition-colors duration-150 cursor-pointer
+                      ${i % 2 === 1 ? "border-l border-[#1a1a1a]" : ""}
+                      ${i >= 2 ? "border-t border-[#1a1a1a]" : ""}
+                    `}
+                    onClick={() => { setFrom("USD"); setTo(f.code); }}
+                    title={`Convert USD to ${f.code}`}
+                  >
+                    <span className="text-sm text-[#888]">{f.code}</span>
+                    <span className="text-sm font-semibold tabular-nums text-white">
+                      {perUsd
+                        ? perUsd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+                        : "—"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+      </div>
+    </main>
+  );
+}

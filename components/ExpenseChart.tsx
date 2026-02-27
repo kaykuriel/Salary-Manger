@@ -51,7 +51,7 @@ export default function ExpenseChart({ categories, salary }: ExpenseChartProps) 
       isRemaining: false,
     })),
     ...(hasIncome && remaining > 0
-      ? [{ name: "Remaining", value: remaining, color: "#252525", isRemaining: true }]
+      ? [{ name: "Remaining", value: remaining, color: "#2e2e2e", isRemaining: true }]
       : []),
   ];
 
@@ -138,13 +138,13 @@ export default function ExpenseChart({ categories, salary }: ExpenseChartProps) 
 
         {hasIncome && remaining > 0 && (
           <li className="flex items-center gap-3 py-2.5 border-t border-[#1c1c1c]">
-            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-[#333] bg-[#1e1e1e]" />
-            <span className="flex-1 text-sm text-[#444]">Remaining</span>
+            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-[#555] bg-[#2e2e2e]" />
+            <span className="flex-1 text-sm text-[#777]">Remaining</span>
             <div className="flex items-center gap-3 flex-shrink-0">
-              <span className="text-xs text-[#3a3a3a] tabular-nums">
+              <span className="text-xs text-[#666] tabular-nums">
                 {(100 - spentPct).toFixed(1)}%
               </span>
-              <span className="text-sm font-semibold text-[#555] tabular-nums w-24 text-right">
+              <span className="text-sm font-semibold text-[#888] tabular-nums w-24 text-right">
                 ${fmt(remaining)}
               </span>
             </div>
