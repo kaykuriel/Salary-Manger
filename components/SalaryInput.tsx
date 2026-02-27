@@ -13,7 +13,11 @@ export default function SalaryInput({ salary, onSave }: SalaryInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   function formatMoneyInput(value: string): string {
-    let clean = value.replace(/[^\d.]/g, "");
+    let s = value;
+    if (!s.includes(".")) {
+      s = s.replace(/,(\d{0,2})$/, ".$1");
+    }
+    let clean = s.replace(/[^\d.]/g, "");
     const dotIdx = clean.indexOf(".");
     if (dotIdx !== -1) {
       clean = clean.slice(0, dotIdx + 1) + clean.slice(dotIdx + 1).replace(/\./g, "");

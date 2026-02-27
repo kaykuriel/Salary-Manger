@@ -7,8 +7,13 @@ interface CategoryFormProps {
 }
 
 function formatMoneyInput(value: string): string {
-  // Strip everything except digits and the first dot
-  let clean = value.replace(/[^\d.]/g, "");
+  let s = value;
+  // If no dot yet, treat a trailing comma as decimal separator
+  // e.g. "1500,50" or "1500," → "1500.50" / "1500."
+  if (!s.includes(".")) {
+    s = s.replace(/,(\d{0,2})$/, ".$1");
+  }
+  let clean = s.replace(/[^\d.]/g, "");
   const dotIdx = clean.indexOf(".");
   if (dotIdx !== -1) {
     clean = clean.slice(0, dotIdx + 1) + clean.slice(dotIdx + 1).replace(/\./g, "");
