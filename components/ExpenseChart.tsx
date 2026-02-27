@@ -1,7 +1,5 @@
 "use client";
 
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-
 interface Category { id: string; name: string; amount: number; color: string; }
 
 interface ExpenseChartProps {
@@ -19,30 +17,52 @@ function fmtShort(value: number) {
   return `$${fmt(value)}`;
 }
 
-interface TooltipPayloadItem {
-  name: string;
-  value: number;
-  payload: { color: string; isRemaining?: boolean };
+interface Segment {
+  color: string;
+  isRemaining: boolean;
+  path: string;
 }
 
-function CustomTooltip({ active, payload }: { active?: boolean; payload?: TooltipPayloadItem[] }) {
-  if (!active || !payload?.length) return null;
-  const item = payload[0];
-  return (
-    <div className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2.5 text-xs shadow-2xl">
-      <p className="text-[#aaa] font-medium mb-1">{item.name}</p>
-      <p
-        className="font-semibold tabular-nums text-sm"
-        style={{ color: item.payload.isRemaining ? "#777" : item.payload.color }}
-      >
-        ${fmt(item.value)}
-      </p>
-    </div>
-  );
+function buildDonut(
+  data: { value: number; color: string; isRemaining: boolean }[],
+  cx: number, cy: number,
+  outerR: number, innerR: number,
+  gapDeg: number,
+): Segment[] {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  if (total === 0) return [];
+
+  const gapRad = (gapDeg * Math.PI) / 180;
+  const segments: Segment[] = [];
+  let angle = -Math.PI / 2;
+
+  data.forEach((entry) => {
+    const sweep    = (entry.value / total) * 2 * Math.PI;
+    const draw     = Math.max(sweep - gapRad, 0.001);
+    const sa = angle, ea = angle + draw;
+
+    const x1o = cx + outerR * Math.cos(sa), y1o = cy + outerR * Math.sin(sa);
+    const x2o = cx + outerR * Math.cos(ea), y2o = cy + outerR * Math.sin(ea);
+    const x2i = cx + innerR * Math.cos(ea), y2i = cy + innerR * Math.sin(ea);
+    const x1i = cx + innerR * Math.cos(sa), y1i = cy + innerR * Math.sin(sa);
+    const large = draw > Math.PI ? 1 : 0;
+
+    const path = [
+      `M ${x1o.toFixed(3)} ${y1o.toFixed(3)}`,
+      `A ${outerR} ${outerR} 0 ${large} 1 ${x2o.toFixed(3)} ${y2o.toFixed(3)}`,
+      `L ${x2i.toFixed(3)} ${y2i.toFixed(3)}`,
+      `A ${innerR} ${innerR} 0 ${large} 0 ${x1i.toFixed(3)} ${y1i.toFixed(3)}`,
+      "Z",
+    ].join(" ");
+
+    segments.push({ color: entry.color, isRemaining: entry.isRemaining, path });
+    angle += sweep;
+  });
+
+  return segments;
 }
 
 export default function ExpenseChart({ categories, salary }: ExpenseChartProps) {
-  // Only render slices for positive amounts — zero/NaN values crash Recharts
   const validCats = categories.filter((c) => c.amount > 0 && isFinite(c.amount));
   if (validCats.length === 0) return null;
 
@@ -51,17 +71,14 @@ export default function ExpenseChart({ categories, salary }: ExpenseChartProps) 
   const hasIncome = salary > 0;
   const spentPct  = hasIncome ? Math.min((spent / salary) * 100, 100) : 100;
 
-  const data = [
-    ...validCats.map((c) => ({
-      name: c.name,
-      value: c.amount,
-      color: c.color,
-      isRemaining: false,
-    })),
+  const chartData = [
+    ...validCats.map((c) => ({ value: c.amount, color: c.color, isRemaining: false })),
     ...(hasIncome && remaining > 0
-      ? [{ name: "Remaining", value: remaining, color: "#2e2e2e", isRemaining: true }]
+      ? [{ value: remaining, color: "#2e2e2e", isRemaining: true }]
       : []),
   ];
+
+  const segments = buildDonut(chartData, 100, 100, 95, 63, 3);
 
   return (
     <div className="bg-[#111] border border-[#222] rounded-xl p-5">
@@ -69,35 +86,21 @@ export default function ExpenseChart({ categories, salary }: ExpenseChartProps) 
         Breakdown
       </p>
 
-      {/* Donut + center label */}
+      {/* Donut */}
       <div className="relative">
-        <ResponsiveContainer width="100%" height={220}>
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              innerRadius={70}
-              outerRadius={100}
-              paddingAngle={3}
-              dataKey="value"
-              strokeWidth={0}
-              isAnimationActive={false}
-            >
-              {data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={entry.color}
-                  stroke={entry.isRemaining ? "#333" : "transparent"}
-                  strokeWidth={entry.isRemaining ? 1 : 0}
-                />
-              ))}
-            </Pie>
-            <Tooltip content={<CustomTooltip />} />
-          </PieChart>
-        </ResponsiveContainer>
+        <svg viewBox="0 0 200 200" className="w-full" style={{ maxHeight: 220 }}>
+          {segments.map((seg, i) => (
+            <path
+              key={i}
+              d={seg.path}
+              fill={seg.color}
+              stroke={seg.isRemaining ? "#444" : "transparent"}
+              strokeWidth={seg.isRemaining ? 0.5 : 0}
+            />
+          ))}
+        </svg>
 
-        {/* Center label — uses short format to avoid overflow */}
+        {/* Center label */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span className="text-[9px] font-mono uppercase tracking-widest text-[#444] mb-0.5">
             spent
@@ -113,7 +116,7 @@ export default function ExpenseChart({ categories, salary }: ExpenseChartProps) 
         </div>
       </div>
 
-      {/* Legend table */}
+      {/* Legend */}
       <ul className="mt-3 flex flex-col">
         {validCats.map((cat) => {
           const pctOfSpent  = spent > 0    ? (cat.amount / spent)  * 100 : 0;
@@ -123,21 +126,14 @@ export default function ExpenseChart({ categories, salary }: ExpenseChartProps) 
               key={cat.id}
               className="flex items-center gap-2 py-2.5 border-t border-[#1c1c1c] first:border-t-0"
             >
-              <span
-                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: cat.color }}
-              />
+              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
               <span className="flex-1 text-sm text-[#ccc] truncate min-w-0">{cat.name}</span>
-
-              {/* Percentages */}
               <div className="flex items-center gap-2 flex-shrink-0 text-xs tabular-nums">
                 {hasIncome && (
                   <span className="text-[#555] hidden sm:block">{pctOfIncome.toFixed(1)}%</span>
                 )}
                 <span className="text-[#666] w-10 text-right">{pctOfSpent.toFixed(0)}%</span>
               </div>
-
-              {/* Amount — right-aligned, nowrap to never overflow */}
               <span className="text-sm font-semibold text-white tabular-nums whitespace-nowrap flex-shrink-0 text-right min-w-[72px]">
                 ${fmt(cat.amount)}
               </span>
