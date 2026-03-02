@@ -30,8 +30,8 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="w-full max-w-sm bg-[#111] border border-[#333] rounded-xl shadow-2xl">
-        <div className="border-b border-[#222] px-5 py-4 flex items-center justify-between">
+      <div className="w-full max-w-sm bg-[#0a0000] border border-[#280000] rounded-xl shadow-2xl">
+        <div className="border-b border-[#1e0000] px-5 py-4 flex items-center justify-between">
           <p className="text-sm font-medium text-white">Create user</p>
           <button
             onClick={onClose}
@@ -83,7 +83,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
               <option value="admin">Admin</option>
             </select>
           </div>
-          {error && <p className="text-[#ff4444] text-xs">{error}</p>}
+          {error && <p className="text-[#ff2222] text-xs">{error}</p>}
           <button
             type="submit"
             disabled={loading}
@@ -127,8 +127,8 @@ function ResetPasswordModal({
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="w-full max-w-sm bg-[#111] border border-[#333] rounded-xl shadow-2xl">
-        <div className="border-b border-[#222] px-5 py-4 flex items-center justify-between">
+      <div className="w-full max-w-sm bg-[#0a0000] border border-[#280000] rounded-xl shadow-2xl">
+        <div className="border-b border-[#1e0000] px-5 py-4 flex items-center justify-between">
           <p className="text-sm font-medium text-white">Reset password</p>
           <button
             onClick={onClose}
@@ -139,8 +139,8 @@ function ResetPasswordModal({
         </div>
         {done ? (
           <div className="p-5 flex flex-col gap-4 items-center text-center">
-            <div className="w-9 h-9 rounded-full bg-[#0070f3]/10 border border-[#0070f3]/30 flex items-center justify-center">
-              <span className="text-[#0070f3] text-base">✓</span>
+            <div className="w-9 h-9 rounded-full bg-[#cc0000]/10 border border-[#cc0000]/30 flex items-center justify-center">
+              <span className="text-[#cc0000] text-base">✓</span>
             </div>
             <p className="text-sm text-white">
               Password for <span className="font-medium">{username}</span> updated.
@@ -175,7 +175,7 @@ function ResetPasswordModal({
                 </button>
               </div>
             </div>
-            {error && <p className="text-[#ff4444] text-xs">{error}</p>}
+            {error && <p className="text-[#ff2222] text-xs">{error}</p>}
             <button
               type="submit"
               disabled={loading}
@@ -224,7 +224,7 @@ function UserDataView({ userId, username }: { userId: string; username: string }
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
-            <tr className="text-[#555] border-b border-[#1a1a1a]">
+            <tr className="text-[#555] border-b border-[#1a0000]">
               <th className="text-left pb-2 font-mono tracking-widest font-normal">MONTH</th>
               <th className="text-right pb-2 font-mono tracking-widest font-normal">INCOME</th>
               <th className="text-right pb-2 font-mono tracking-widest font-normal">SPENT</th>
@@ -240,11 +240,11 @@ function UserDataView({ userId, username }: { userId: string; username: string }
               const spent = cats.reduce((s: number, c: { amount?: number }) => s + (c.amount ?? 0), 0);
               const left = salary - spent;
               return (
-                <tr key={mk} className="border-b border-[#141414] hover:bg-white/[0.02] transition-colors">
+                <tr key={mk} className="border-b border-[#140000] hover:bg-white/[0.02] transition-colors">
                   <td className="py-2 text-white">{mk}</td>
                   <td className="py-2 text-right text-white tabular-nums">${fmt(salary)}</td>
                   <td className="py-2 text-right text-[#888] tabular-nums">${fmt(spent)}</td>
-                  <td className={`py-2 text-right tabular-nums ${left < 0 ? "text-[#ff4444]" : "text-[#0070f3]"}`}>
+                  <td className={`py-2 text-right tabular-nums ${left < 0 ? "text-[#ff2222]" : "text-[#cc0000]"}`}>
                     ${fmt(left)}
                   </td>
                   <td className="py-2 text-right text-[#555]">{cats.length}</td>
@@ -290,10 +290,10 @@ export default function AdminPanel({ currentUserId }: { currentUserId: string })
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: "Total", value: users.length, color: "text-white" },
-          { label: "Admins", value: adminCount, color: "text-[#0070f3]" },
+          { label: "Admins", value: adminCount, color: "text-[#cc0000]" },
           { label: "Regular", value: users.length - adminCount, color: "text-[#888]" },
         ].map((s) => (
-          <div key={s.label} className="card p-4 hover:border-[#444]">
+          <div key={s.label} className="card p-4 hover:border-[#3a0000]">
             <p className="text-xs font-mono uppercase tracking-widest text-[#555] mb-1">{s.label}</p>
             <p className={`text-2xl font-semibold ${s.color}`}>{s.value}</p>
           </div>
@@ -301,8 +301,8 @@ export default function AdminPanel({ currentUserId }: { currentUserId: string })
       </div>
 
       {/* User list */}
-      <div className="card overflow-hidden hover:border-[#444]">
-        <div className="border-b border-[#222] px-5 py-3 flex items-center justify-between">
+      <div className="card overflow-hidden hover:border-[#3a0000]">
+        <div className="border-b border-[#1e0000] px-5 py-3 flex items-center justify-between">
           <p className="text-xs font-mono uppercase tracking-widest text-[#555]">Users</p>
           <button
             onClick={() => setShowCreate(true)}
@@ -321,15 +321,15 @@ export default function AdminPanel({ currentUserId }: { currentUserId: string })
               const isExp = expanded === u.id;
 
               return (
-                <li key={u.id} className={i > 0 ? "border-t border-[#1a1a1a]" : ""}>
+                <li key={u.id} className={i > 0 ? "border-t border-[#1a0000]" : ""}>
                   {/* Row */}
                   <div className="px-5 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-full overflow-hidden border border-[#2a2a2a] flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full overflow-hidden border border-[#280000] flex-shrink-0">
                         {u.avatar ? (
                           <img src={u.avatar} alt={u.username} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full bg-[#111] flex items-center justify-center">
+                          <div className="w-full h-full bg-[#0a0000] flex items-center justify-center">
                             <span className="text-[10px] font-semibold text-[#444]">
                               {u.username.slice(0, 2).toUpperCase()}
                             </span>
@@ -340,9 +340,9 @@ export default function AdminPanel({ currentUserId }: { currentUserId: string })
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-medium text-white">{u.username}</span>
                           {isMe && (
-                            <span className="text-[10px] px-1.5 py-0.5 border border-[#333] text-[#555] rounded font-mono">you</span>
+                            <span className="text-[10px] px-1.5 py-0.5 border border-[#280000] text-[#555] rounded font-mono">you</span>
                           )}
-                          <span className={`text-[10px] px-1.5 py-0.5 border rounded font-mono ${u.role === "admin" ? "border-[#0070f3]/40 text-[#0070f3]" : "border-[#2a2a2a] text-[#555]"}`}>
+                          <span className={`text-[10px] px-1.5 py-0.5 border rounded font-mono ${u.role === "admin" ? "border-[#cc0000]/40 text-[#cc0000]" : "border-[#280000] text-[#555]"}`}>
                             {u.role}
                           </span>
                         </div>
@@ -369,7 +369,7 @@ export default function AdminPanel({ currentUserId }: { currentUserId: string })
                           </button>
                           <button
                             onClick={() => setConfirmDelete(u.id)}
-                            className="btn-ghost text-xs hover:text-[#ff4444]"
+                            className="btn-ghost text-xs hover:text-[#ff2222]"
                           >
                             Delete
                           </button>
@@ -380,21 +380,21 @@ export default function AdminPanel({ currentUserId }: { currentUserId: string })
 
                   {/* Expanded data */}
                   {isExp && (
-                    <div className="border-t border-[#1a1a1a] bg-[#0a0a0a]">
+                    <div className="border-t border-[#1a0000] bg-[#060000]">
                       <UserDataView userId={u.id} username={u.username} />
                     </div>
                   )}
 
                   {/* Delete confirm */}
                   {confirmDelete === u.id && (
-                    <div className="border-t border-[#ff4444]/20 bg-[#ff4444]/5 px-5 py-3 flex items-center justify-between gap-4">
+                    <div className="border-t border-[#ff2222]/20 bg-[#ff2222]/5 px-5 py-3 flex items-center justify-between gap-4">
                       <p className="text-xs text-[#888]">
                         Delete <span className="text-white font-medium">{u.username}</span> and all their data?
                       </p>
                       <div className="flex gap-2 flex-shrink-0">
                         <button
                           onClick={() => setConfirmDelete(null)}
-                          className="btn-ghost text-xs border border-[#2a2a2a]"
+                          className="btn-ghost text-xs border border-[#280000]"
                         >
                           Cancel
                         </button>
@@ -405,7 +405,7 @@ export default function AdminPanel({ currentUserId }: { currentUserId: string })
                             setExpanded(null);
                             refresh();
                           }}
-                          className="text-xs px-3 py-1.5 bg-[#ff4444] hover:bg-red-600 active:scale-[0.97] text-white rounded transition-all"
+                          className="text-xs px-3 py-1.5 bg-[#ff2222] hover:bg-red-600 active:scale-[0.97] text-white rounded transition-all"
                         >
                           Delete
                         </button>

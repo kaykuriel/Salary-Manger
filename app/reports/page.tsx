@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import type { Session } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
-import InvestmentsManager from "@/components/InvestmentsManager";
+import ReportsManager from "@/components/ReportsManager";
 
-export default function InvestmentsPage() {
+export default function ReportsPage() {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
 
@@ -29,7 +29,7 @@ export default function InvestmentsPage() {
   return (
     <div className="min-h-screen bg-black">
       <Navbar session={session} />
-      <InvestmentsManager />
+      <ReportsManager />
     </div>
   );
 }

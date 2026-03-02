@@ -9,7 +9,6 @@ interface CategoryFormProps {
 function formatMoneyInput(value: string): string {
   let s = value;
   // If no dot yet, treat a trailing comma as decimal separator
-  // e.g. "1500,50" or "1500," → "1500.50" / "1500."
   if (!s.includes(".")) {
     s = s.replace(/,(\d{0,2})$/, ".$1");
   }
@@ -48,12 +47,12 @@ export default function CategoryForm({ onAdd }: CategoryFormProps) {
   }
 
   return (
-    <div className="card p-5 hover:border-[#444]">
+    <div className="card p-5 hover:border-[#3a0000]">
       <p className="text-xs font-mono uppercase tracking-widest text-[#666] mb-4">
         Add Expense
       </p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap sm:flex-nowrap gap-2">
           <input
             ref={nameRef}
             type="text"
@@ -73,12 +72,12 @@ export default function CategoryForm({ onAdd }: CategoryFormProps) {
               onChange={handleAmountChange}
               onKeyDown={(e) => { if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault(); }}
               placeholder="0.00"
-              className="field w-32 !pl-7"
+              className="field w-full sm:w-32 !pl-7"
             />
           </div>
-          <button type="submit" className="btn">Add</button>
+          <button type="submit" className="btn w-full sm:w-auto">Add</button>
         </div>
-        {error && <p className="text-[#ff4444] text-xs">{error}</p>}
+        {error && <p className="text-[#ff2222] text-xs">{error}</p>}
       </form>
     </div>
   );

@@ -6,12 +6,12 @@
 @layer components {
   /* Base input */
   .field {
-    @apply w-full bg-[#0d0d0d] border border-[#333] rounded-lg px-3 py-2
+    @apply w-full bg-[#060000] border border-[#280000] rounded-lg px-3 py-2
            text-sm text-white placeholder-[#555] outline-none
            transition-all duration-150;
   }
   .field:focus {
-    @apply border-[#0070f3] ring-1 ring-[#0070f3]/20;
+    @apply border-[#cc0000] ring-1 ring-[#cc0000]/20;
   }
   .field::placeholder {
     color: #555;
@@ -19,12 +19,12 @@
 
   /* Reusable card shell */
   .card {
-    @apply bg-[#111] border border-[#333] rounded-xl transition-colors duration-200;
+    @apply bg-[#0a0000] border border-[#280000] rounded-xl transition-colors duration-200;
   }
 
   /* Primary button */
   .btn {
-    @apply bg-[#0070f3] hover:bg-[#0060df] active:scale-[0.97]
+    @apply bg-[#cc0000] hover:bg-[#aa0000] active:scale-[0.97]
            text-white text-sm font-medium rounded-lg
            transition-all duration-150 px-4 py-2 flex-shrink-0 cursor-pointer;
   }
@@ -39,15 +39,15 @@
 /* ─── Select options — dark background so it doesn't flash white ─ */
 select option,
 select optgroup {
-  background-color: #0d0d0d;
+  background-color: #060000;
   color: #ffffff;
 }
 
 /* ─── Scrollbar ─────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: #000; }
-::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: #0070f3; }
+::-webkit-scrollbar-thumb { background: #280000; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #cc0000; }
 
 /* ─── Number inputs: hide spinners ──────────────────────────── */
 input[type="number"]::-webkit-inner-spin-button,

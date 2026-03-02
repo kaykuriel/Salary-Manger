@@ -15,7 +15,7 @@ function fmt(v: number) {
 export default function CategoryList({ categories, salary, onDelete }: CategoryListProps) {
   if (categories.length === 0) {
     return (
-      <div className="card p-8 text-center hover:border-[#444]">
+      <div className="card p-8 text-center hover:border-[#3a0000]">
         <p className="text-[#555] text-sm">No expenses yet.</p>
       </div>
     );
@@ -24,9 +24,9 @@ export default function CategoryList({ categories, salary, onDelete }: CategoryL
   const totalSpent = categories.reduce((s, c) => s + c.amount, 0);
 
   return (
-    <div className="card overflow-hidden hover:border-[#444]">
+    <div className="card overflow-hidden hover:border-[#3a0000]">
       {/* Header */}
-      <div className="px-5 py-3 border-b border-[#222] flex justify-between items-center">
+      <div className="px-5 py-3 border-b border-[#1e0000] flex justify-between items-center">
         <p className="text-xs font-mono uppercase tracking-widest text-[#666]">Expenses</p>
         <p className="text-xs text-[#555]">
           {categories.length} {categories.length === 1 ? "item" : "items"}
@@ -43,7 +43,7 @@ export default function CategoryList({ categories, salary, onDelete }: CategoryL
           return (
             <li
               key={cat.id}
-              className={`px-5 py-4 group transition-colors duration-150 hover:bg-white/[0.02] ${i > 0 ? "border-t border-[#1a1a1a]" : ""}`}
+              className={`px-5 py-4 group transition-colors duration-150 hover:bg-white/[0.02] ${i > 0 ? "border-t border-[#1a0000]" : ""}`}
             >
               {/* Name + amount */}
               <div className="flex items-center justify-between mb-2">
@@ -60,7 +60,7 @@ export default function CategoryList({ categories, salary, onDelete }: CategoryL
                   </span>
                   <button
                     onClick={() => onDelete(cat.id)}
-                    className="opacity-0 group-hover:opacity-100 text-[#555] hover:text-[#ff4444] transition-all duration-150 text-xs w-5 h-5 flex items-center justify-center rounded hover:bg-[#ff4444]/10"
+                    className="opacity-0 group-hover:opacity-100 text-[#555] hover:text-[#ff2222] transition-all duration-150 text-xs w-5 h-5 flex items-center justify-center rounded hover:bg-[#ff2222]/10"
                     aria-label={`Delete ${cat.name}`}
                   >
                     ✕
@@ -84,7 +84,7 @@ export default function CategoryList({ categories, salary, onDelete }: CategoryL
               </div>
 
               {/* Progress bar */}
-              <div className="h-[3px] bg-[#1a1a1a] rounded-full overflow-hidden ml-[18px]">
+              <div className="h-[3px] bg-[#1a0000] rounded-full overflow-hidden ml-[18px]">
                 <div
                   className="h-full rounded-full transition-all duration-500 ease-out"
                   style={{ width: `${barWidth}%`, backgroundColor: cat.color }}
@@ -96,7 +96,7 @@ export default function CategoryList({ categories, salary, onDelete }: CategoryL
       </ul>
 
       {/* Footer */}
-      <div className="px-5 py-3 border-t border-[#222] bg-[#0a0a0a] flex justify-between items-center">
+      <div className="px-5 py-3 border-t border-[#1e0000] bg-[#060000] flex justify-between items-center">
         <span className="text-xs font-mono uppercase tracking-widest text-[#666]">Total</span>
         <div>
           <span className="text-base font-semibold tabular-nums text-white">${fmt(totalSpent)}</span>

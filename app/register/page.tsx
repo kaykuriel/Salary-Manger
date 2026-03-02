@@ -52,7 +52,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-[360px] flex flex-col gap-6">
 
         <div className="flex flex-col items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[#0070f3] flex items-center justify-center mb-1">
+          <div className="w-8 h-8 rounded-lg bg-[#cc0000] flex items-center justify-center mb-1">
             <span className="text-white text-sm font-bold">$</span>
           </div>
           <h1 className="text-xl font-semibold text-white tracking-tight">Create account</h1>
@@ -120,7 +120,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {error && <p className="text-[#ff4444] text-xs -mt-1">{error}</p>}
+            {error && <p className="text-[#ff2222] text-xs -mt-1">{error}</p>}
 
             <button
               type="submit"
@@ -134,7 +134,7 @@ export default function RegisterPage() {
 
         <p className="text-center text-xs text-[#555]">
           Already have an account?{" "}
-          <a href="/login" className="text-[#0070f3] hover:underline">
+          <a href="/login" className="text-[#cc0000] hover:underline">
             Sign in
           </a>
         </p>

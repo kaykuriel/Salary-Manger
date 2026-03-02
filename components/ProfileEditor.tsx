@@ -104,12 +104,12 @@ export default function ProfileEditor({ username: initialUsername }: { username:
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={avatarLoading}
-          className="relative group w-24 h-24 rounded-full overflow-hidden border-2 border-[#333] hover:border-[#0070f3] transition-colors duration-200 disabled:opacity-60"
+          className="relative group w-24 h-24 rounded-full overflow-hidden border-2 border-[#280000] hover:border-[#cc0000] transition-colors duration-200 disabled:opacity-60"
         >
           {avatar ? (
             <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full bg-[#111] flex items-center justify-center">
+            <div className="w-full h-full bg-[#0a0000] flex items-center justify-center">
               <span className="text-2xl font-semibold text-[#444]">{initials}</span>
             </div>
           )}
@@ -124,7 +124,7 @@ export default function ProfileEditor({ username: initialUsername }: { username:
       <form onSubmit={handleSave} className="flex flex-col gap-5">
 
         {/* Account */}
-        <div className="card p-5 flex flex-col gap-4 hover:border-[#444]">
+        <div className="card p-5 flex flex-col gap-4 hover:border-[#3a0000]">
           <p className="text-xs font-mono uppercase tracking-widest text-[#555]">Account</p>
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-mono uppercase tracking-widest text-[#555]">Username</label>
@@ -138,7 +138,7 @@ export default function ProfileEditor({ username: initialUsername }: { username:
         </div>
 
         {/* Password */}
-        <div className="card p-5 flex flex-col gap-4 hover:border-[#444]">
+        <div className="card p-5 flex flex-col gap-4 hover:border-[#3a0000]">
           <p className="text-xs font-mono uppercase tracking-widest text-[#555]">Change password</p>
 
           <div className="flex flex-col gap-1.5">
@@ -196,7 +196,7 @@ export default function ProfileEditor({ username: initialUsername }: { username:
         </div>
 
         {msg && (
-          <p className={`text-xs ${msg.ok ? "text-[#50e3c2]" : "text-[#ff4444]"}`}>{msg.text}</p>
+          <p className={`text-xs ${msg.ok ? "text-[#ff9090]" : "text-[#ff2222]"}`}>{msg.text}</p>
         )}
 
         <button

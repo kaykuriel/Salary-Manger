@@ -6,9 +6,9 @@ import { logoutUser, getProfile } from "@/lib/auth";
 import type { Session } from "@/lib/auth";
 
 const NAV = [
-  { label: "Dashboard",   href: "/dashboard",   icon: "◈" },
-  { label: "Investments", href: "/investments",  icon: "◎" },
-  { label: "Converter",   href: "/converter",    icon: "⇄" },
+  { label: "Dashboard", href: "/dashboard", icon: "◈" },
+  { label: "Reports",   href: "/reports",   icon: "◎" },
+  { label: "Converter", href: "/converter", icon: "⇄" },
 ];
 
 export default function Navbar({ session }: { session: Session }) {
@@ -50,18 +50,18 @@ export default function Navbar({ session }: { session: Session }) {
   return (
     <div ref={menuRef} className="sticky top-0 z-10">
       {/* Main bar */}
-      <header className="border-b border-[#1a1a1a] bg-[#080808] backdrop-blur-sm">
+      <header className="border-b border-[#1a0000] bg-[#050000] backdrop-blur-sm">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           {/* Left: identity */}
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="w-2 h-2 rounded-full bg-[#0070f3] flex-shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-[#cc0000] flex-shrink-0" />
             <span className="text-sm font-semibold text-white tracking-tight truncate">
               Salary Manager
             </span>
-            <span className="text-[#2a2a2a]">·</span>
+            <span className="text-[#2a0000]">·</span>
             <span className="text-xs text-[#555] font-mono truncate">{session.username}</span>
             {session.role === "admin" && (
-              <span className="text-[10px] px-1.5 py-0.5 border border-[#0070f3]/30 text-[#0070f3] rounded font-mono flex-shrink-0">
+              <span className="text-[10px] px-1.5 py-0.5 border border-[#cc0000]/30 text-[#cc0000] rounded font-mono flex-shrink-0">
                 admin
               </span>
             )}
@@ -71,13 +71,13 @@ export default function Navbar({ session }: { session: Session }) {
           <div className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={() => go("/profile")}
-              className="w-8 h-8 rounded-full overflow-hidden border border-[#333] hover:border-[#0070f3] transition-colors duration-150 flex-shrink-0"
+              className="w-8 h-8 rounded-full overflow-hidden border border-[#280000] hover:border-[#cc0000] transition-colors duration-150 flex-shrink-0"
               aria-label="Profile"
             >
               {avatar ? (
                 <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-[#111] flex items-center justify-center">
+                <div className="w-full h-full bg-[#0a0000] flex items-center justify-center">
                   <span className="text-[10px] font-semibold text-[#555]">
                     {session.username.slice(0, 2).toUpperCase()}
                   </span>
@@ -89,8 +89,8 @@ export default function Navbar({ session }: { session: Session }) {
               onClick={() => setOpen((v) => !v)}
               className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-all duration-150 active:scale-90 flex-shrink-0
                 ${open
-                  ? "border-[#0070f3]/50 text-white bg-[#0070f3]/10"
-                  : "border-[#222] text-[#666] hover:text-white hover:border-[#444]"
+                  ? "border-[#cc0000]/50 text-white bg-[#cc0000]/10"
+                  : "border-[#280000] text-[#666] hover:text-white hover:border-[#3a0000]"
                 }`}
               aria-label="Menu"
             >
@@ -110,7 +110,7 @@ export default function Navbar({ session }: { session: Session }) {
 
       {/* Dropdown — compact card anchored to the hamburger button */}
       {open && (
-        <div className="absolute right-4 top-[calc(100%+6px)] w-52 bg-[#0d0d0d] border border-[#222] rounded-xl shadow-2xl shadow-black/80 overflow-hidden">
+        <div className="absolute right-4 top-[calc(100%+6px)] w-52 bg-[#060000] border border-[#280000] rounded-xl shadow-2xl shadow-black/80 overflow-hidden">
           <div className="p-1.5 flex flex-col gap-0.5">
             {/* Nav items */}
             {NAV.map((item) => {
@@ -128,7 +128,7 @@ export default function Navbar({ session }: { session: Session }) {
                   <span className="text-base w-5 text-center opacity-60">{item.icon}</span>
                   {item.label}
                   {active && (
-                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#0070f3]" />
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#cc0000]" />
                   )}
                 </button>
               );
@@ -146,7 +146,7 @@ export default function Navbar({ session }: { session: Session }) {
                 <span className="text-base w-5 text-center opacity-60">⊕</span>
                 Users
                 {pathname === "/admin" && (
-                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#0070f3]" />
+                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#cc0000]" />
                 )}
               </button>
             )}
@@ -163,17 +163,17 @@ export default function Navbar({ session }: { session: Session }) {
               <span className="text-base w-5 text-center opacity-60">◉</span>
               Profile
               {pathname === "/profile" && (
-                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#0070f3]" />
+                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#cc0000]" />
               )}
             </button>
 
             {/* Divider */}
-            <div className="h-px bg-[#1a1a1a] my-1" />
+            <div className="h-px bg-[#1a0000] my-1" />
 
             {/* Sign out */}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-[#666] hover:text-[#ff4444] hover:bg-[#ff4444]/[0.06] transition-all duration-150 text-left w-full"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-[#666] hover:text-[#ff2222] hover:bg-[#ff2222]/[0.06] transition-all duration-150 text-left w-full"
             >
               <span className="text-base w-5 text-center opacity-60">→</span>
               Sign out

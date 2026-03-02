@@ -52,7 +52,7 @@ function fmtPrice(v: number): string {
 }
 
 // Shared select style — dark bg so it stays dark even when focused/open
-const SELECT_CLS = "w-40 flex-shrink-0 cursor-pointer bg-[#0d0d0d] border border-[#333] rounded-lg px-3 py-2 text-sm text-white outline-none transition-all duration-150 focus:border-[#0070f3] focus:ring-1 focus:ring-[#0070f3]/20";
+const SELECT_CLS = "w-40 flex-shrink-0 cursor-pointer bg-[#060000] border border-[#280000] rounded-lg px-3 py-2 text-sm text-white outline-none transition-all duration-150 focus:border-[#cc0000] focus:ring-1 focus:ring-[#cc0000]/20";
 
 export default function CurrencyConverter() {
   const [rates,    setRates]    = useState<RatesMap | null>(null);
@@ -144,7 +144,7 @@ export default function CurrencyConverter() {
           <button
             onClick={fetchRates}
             disabled={fetching}
-            className={`w-6 h-6 flex items-center justify-center rounded text-base transition-all active:scale-90 ${fetching ? "animate-spin text-[#0070f3]" : "text-[#333] hover:text-[#888]"}`}
+            className={`w-6 h-6 flex items-center justify-center rounded text-base transition-all active:scale-90 ${fetching ? "animate-spin text-[#cc0000]" : "text-[#333] hover:text-[#888]"}`}
             title="Refresh rates"
           >
             ↻
@@ -155,8 +155,8 @@ export default function CurrencyConverter() {
         </div>
 
         {/* Converter card */}
-        <div className="card p-5 hover:border-[#444]">
-          {error && <p className="text-[#ff4444] text-xs mb-4">{error}</p>}
+        <div className="card p-5 hover:border-[#3a0000]">
+          {error && <p className="text-[#ff2222] text-xs mb-4">{error}</p>}
           <div className="flex flex-col gap-3">
 
             {/* FROM */}
@@ -179,20 +179,20 @@ export default function CurrencyConverter() {
 
             {/* Swap */}
             <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-[#1e1e1e]" />
+              <div className="flex-1 h-px bg-[#1a0000]" />
               <button
                 onClick={() => { setFrom(to); setTo(from); }}
-                className="text-[#444] hover:text-white transition-all duration-150 w-8 h-8 flex items-center justify-center border border-[#222] rounded-lg text-sm active:scale-90 hover:border-[#0070f3]"
+                className="text-[#444] hover:text-white transition-all duration-150 w-8 h-8 flex items-center justify-center border border-[#280000] rounded-lg text-sm active:scale-90 hover:border-[#cc0000]"
                 title="Swap"
               >
                 ⇅
               </button>
-              <div className="flex-1 h-px bg-[#1e1e1e]" />
+              <div className="flex-1 h-px bg-[#1a0000]" />
             </div>
 
             {/* TO */}
             <div className="flex gap-2">
-              <div className="flex-1 bg-[#0a0a0a] border border-[#222] rounded-lg px-3 py-2 flex items-center min-h-[42px]">
+              <div className="flex-1 bg-[#060000] border border-[#280000] rounded-lg px-3 py-2 flex items-center min-h-[42px]">
                 {fetching ? (
                   <span className="text-[#444] text-sm">Loading…</span>
                 ) : result !== null ? (
@@ -216,8 +216,8 @@ export default function CurrencyConverter() {
 
         {/* Crypto prices */}
         {rates && (
-          <div className="card overflow-hidden hover:border-[#444]">
-            <div className="px-5 py-3 border-b border-[#222]">
+          <div className="card overflow-hidden hover:border-[#3a0000]">
+            <div className="px-5 py-3 border-b border-[#1e0000]">
               <p className="text-xs font-mono uppercase tracking-widest text-[#666]">Crypto Prices (USD)</p>
             </div>
             <ul>
@@ -226,14 +226,14 @@ export default function CurrencyConverter() {
                 return (
                   <li
                     key={c.code}
-                    className={`px-5 py-3.5 flex items-center justify-between hover:bg-white/[0.02] transition-colors duration-150 cursor-pointer ${i > 0 ? "border-t border-[#1a1a1a]" : ""}`}
+                    className={`px-5 py-3.5 flex items-center justify-between hover:bg-white/[0.02] transition-colors duration-150 cursor-pointer ${i > 0 ? "border-t border-[#1a0000]" : ""}`}
                     onClick={() => { setFrom(c.code); setTo("USD"); }}
                   >
                     <div className="flex items-center gap-2.5">
                       <span className="text-sm font-semibold text-white w-14">{c.code}</span>
                       <span className="text-xs text-[#555]">{c.name}</span>
                     </div>
-                    <span className="text-sm font-semibold tabular-nums text-[#50e3c2]">
+                    <span className="text-sm font-semibold tabular-nums text-[#ff9090]">
                       ${price ? fmtPrice(price) : "—"}
                     </span>
                   </li>
@@ -245,8 +245,8 @@ export default function CurrencyConverter() {
 
         {/* Fiat rates */}
         {rates && (
-          <div className="card overflow-hidden hover:border-[#444]">
-            <div className="px-5 py-3 border-b border-[#222]">
+          <div className="card overflow-hidden hover:border-[#3a0000]">
+            <div className="px-5 py-3 border-b border-[#1e0000]">
               <p className="text-xs font-mono uppercase tracking-widest text-[#666]">Fiat Rates (per 1 USD)</p>
             </div>
             <div className="grid grid-cols-2">
@@ -256,8 +256,8 @@ export default function CurrencyConverter() {
                   <div
                     key={f.code}
                     className={`px-5 py-3 flex items-center justify-between hover:bg-white/[0.02] transition-colors duration-150 cursor-pointer
-                      ${i % 2 === 1 ? "border-l border-[#1a1a1a]" : ""}
-                      ${i >= 2    ? "border-t border-[#1a1a1a]" : ""}
+                      ${i % 2 === 1 ? "border-l border-[#1a0000]" : ""}
+                      ${i >= 2    ? "border-t border-[#1a0000]" : ""}
                     `}
                     onClick={() => { setFrom("USD"); setTo(f.code); }}
                   >

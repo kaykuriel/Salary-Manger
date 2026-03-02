@@ -5,9 +5,10 @@ import { useState, useEffect, useRef } from "react";
 interface SalaryInputProps {
   salary: number;
   onSave: (value: number) => void;
+  onResetRequest?: () => void;
 }
 
-export default function SalaryInput({ salary, onSave }: SalaryInputProps) {
+export default function SalaryInput({ salary, onSave, onResetRequest }: SalaryInputProps) {
   const [focused, setFocused] = useState(false);
   const [raw, setRaw] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -65,8 +66,17 @@ export default function SalaryInput({ salary, onSave }: SalaryInputProps) {
     }
   }
 
+  function handleClear(e: React.MouseEvent) {
+    e.preventDefault();
+    if (salary > 0 && onResetRequest) {
+      onResetRequest();
+    } else {
+      onSave(0);
+    }
+  }
+
   return (
-    <div className="card p-5 hover:border-[#444] transition-colors duration-200">
+    <div className="card p-5 hover:border-[#3a0000] transition-colors duration-200">
       <label className="block text-xs font-mono uppercase tracking-widest text-[#666] mb-3">
         Monthly Salary
       </label>
@@ -84,12 +94,12 @@ export default function SalaryInput({ salary, onSave }: SalaryInputProps) {
           onBlur={commit}
           onKeyDown={handleKeyDown}
           placeholder="0.00"
-          className="flex-1 bg-transparent text-3xl font-semibold text-white placeholder-[#2a2a2a] outline-none border-b border-[#333] focus:border-[#0070f3] transition-colors duration-200 pb-0.5"
+          className="flex-1 bg-transparent text-3xl font-semibold text-white placeholder-[#2a0000] outline-none border-b border-[#280000] focus:border-[#cc0000] transition-colors duration-200 pb-0.5"
         />
         {salary > 0 && !focused && (
           <button
-            onMouseDown={(e) => { e.preventDefault(); onSave(0); }}
-            className="text-[#333] hover:text-[#ff4444] transition-colors duration-150 text-xs w-6 h-6 flex items-center justify-center rounded hover:bg-[#ff4444]/10 flex-shrink-0 mb-0.5"
+            onMouseDown={handleClear}
+            className="text-[#333] hover:text-[#ff2222] transition-colors duration-150 text-xs w-6 h-6 flex items-center justify-center rounded hover:bg-[#ff2222]/10 flex-shrink-0 mb-0.5"
             aria-label="Clear salary"
             title="Clear salary"
           >

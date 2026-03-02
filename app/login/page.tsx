@@ -37,7 +37,7 @@ function LoginForm() {
   return (
     <div className="w-full max-w-[360px] flex flex-col gap-6">
       <div className="flex flex-col items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-[#0070f3] flex items-center justify-center mb-1">
+        <div className="w-8 h-8 rounded-lg bg-[#cc0000] flex items-center justify-center mb-1">
           <span className="text-white text-sm font-bold">$</span>
         </div>
         <h1 className="text-xl font-semibold text-white tracking-tight">Sign in</h1>
@@ -45,7 +45,7 @@ function LoginForm() {
       </div>
 
       {registered && (
-        <div className="px-4 py-2.5 bg-[#0070f3]/10 border border-[#0070f3]/30 rounded-lg text-xs text-[#0070f3] text-center">
+        <div className="px-4 py-2.5 bg-[#cc0000]/10 border border-[#cc0000]/30 rounded-lg text-xs text-[#cc0000] text-center">
           Account created! Sign in below.
         </div>
       )}
@@ -91,7 +91,7 @@ function LoginForm() {
             </div>
           </div>
 
-          {error && <p className="text-[#ff4444] text-xs -mt-1">{error}</p>}
+          {error && <p className="text-[#ff2222] text-xs -mt-1">{error}</p>}
 
           <button
             type="submit"
@@ -105,7 +105,7 @@ function LoginForm() {
 
       <p className="text-center text-xs text-[#555]">
         No account?{" "}
-        <a href="/register" className="text-[#0070f3] hover:underline">
+        <a href="/register" className="text-[#cc0000] hover:underline">
           Create one
         </a>
       </p>
