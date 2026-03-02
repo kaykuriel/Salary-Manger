@@ -70,12 +70,11 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
   const justLoadedRef = useRef(false);
   const isReloadRef = useRef(false);
   const [fetchKey, setFetchKey] = useState(0);
-  // Refs for flushing unsaved data on unmount
+
+  // For the typing debounce fallback (salary field while typing)
   const latestMonthKeyRef = useRef(monthKey);
   const latestDataRef = useRef(monthData);
   const isDirtyRef = useRef(false);
-  // When true, the next save effect run fires immediately instead of debouncing
-  const saveImmediateRef = useRef(false);
 
   const reload = useCallback(() => {
     isReloadRef.current = true;
@@ -88,10 +87,8 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
     isReloadRef.current = false;
 
     if (!isReload) {
-      // Month change: show full loading screen
       setHydrated(false);
     } else {
-      // Reload: keep content visible, show spinner
       setLoading(true);
     }
     justLoadedRef.current = false;
@@ -116,9 +113,8 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
     return () => { cancelled = true; };
   }, [monthKey, fetchKey]);
 
-  // Debounced save — skips the first run after a fresh load
+  // Typing debounce — only fires if user was typing but didn't blur
   useEffect(() => {
-    // Always keep refs current so the unmount flush has the latest values
     latestMonthKeyRef.current = monthKey;
     latestDataRef.current = monthData;
 
@@ -129,19 +125,6 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
       return;
     }
     isDirtyRef.current = true;
-
-    // Structural changes (add/delete) request an immediate save — no debounce
-    if (saveImmediateRef.current) {
-      saveImmediateRef.current = false;
-      isDirtyRef.current = false;
-      fetch(`/api/data/${monthKey}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(monthData),
-      }).catch(() => {});
-      return;
-    }
-
     const timer = setTimeout(() => {
       isDirtyRef.current = false;
       fetch(`/api/data/${monthKey}`, {
@@ -149,11 +132,11 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(monthData),
       }).catch(() => {});
-    }, 300);
+    }, 800);
     return () => clearTimeout(timer);
   }, [monthData, hydrated, monthKey]);
 
-  // Flush any pending dirty data when navigating away (keepalive survives navigation)
+  // Keepalive on unmount — saves any uncommitted typing
   useEffect(() => {
     return () => {
       if (!isDirtyRef.current) return;
@@ -166,17 +149,19 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
     };
   }, []);
 
-  const update = useCallback((fn: (m: MonthData) => MonthData, immediate = false) => {
-    if (immediate) saveImmediateRef.current = true;
-    setMonthData((prev) => fn(prev));
-  }, []);
+  // Direct save — called immediately for every explicit user action
+  function saveNow(data: MonthData) {
+    isDirtyRef.current = false;
+    fetch(`/api/data/${monthKey}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }).catch(() => {});
+  }
 
   function handleReset() {
-    // Mark as "just loaded" so the debounced save effect skips this state change
-    // (prevents debounce from re-creating an empty row right after the DELETE)
     justLoadedRef.current = true;
     isDirtyRef.current = false;
-    saveImmediateRef.current = false;
     setMonthData(empty());
     setShowResetConfirm(false);
     fetch(`/api/data/${monthKey}`, { method: "DELETE" }).catch(() => {});
@@ -205,49 +190,57 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
         />
         <SalaryInput
           salary={monthData.salary}
-          onSave={(v) => update((m) => ({ ...m, salary: v }), true)}
+          onSave={(v) => {
+            const next = { ...monthData, salary: v };
+            setMonthData(next);
+            saveNow(next);
+          }}
           onResetRequest={() => setShowResetConfirm(true)}
         />
         <ExtrasSection
           extras={monthData.extras}
-          onAdd={(name, amount) =>
-            update((m) => ({
-              ...m,
-              extras: [...m.extras, { id: crypto.randomUUID(), name, amount }],
-            }), true)
-          }
-          onDelete={(id) =>
-            update((m) => ({ ...m, extras: m.extras.filter((e) => e.id !== id) }), true)
-          }
+          onAdd={(name, amount) => {
+            const next = { ...monthData, extras: [...monthData.extras, { id: crypto.randomUUID(), name, amount }] };
+            setMonthData(next);
+            saveNow(next);
+          }}
+          onDelete={(id) => {
+            const next = { ...monthData, extras: monthData.extras.filter((e) => e.id !== id) };
+            setMonthData(next);
+            saveNow(next);
+          }}
         />
         <SummaryCards salary={totalIncome} spent={totalSpent} />
         <CategoryForm
-          onAdd={(name, amount) =>
-            update((m) => ({
-              ...m,
+          onAdd={(name, amount) => {
+            const next: MonthData = {
+              ...monthData,
               categories: [
-                ...m.categories,
+                ...monthData.categories,
                 {
                   id: crypto.randomUUID(),
                   name,
                   amount,
-                  color: PALETTE[m.categories.length % PALETTE.length],
+                  color: PALETTE[monthData.categories.length % PALETTE.length],
                 },
               ],
-            }), true)
-          }
+            };
+            setMonthData(next);
+            saveNow(next);
+          }}
         />
         <CategoryList
           categories={monthData.categories}
           salary={totalIncome}
-          onDelete={(id) =>
-            update((m) => ({ ...m, categories: m.categories.filter((c) => c.id !== id) }), true)
-          }
+          onDelete={(id) => {
+            const next = { ...monthData, categories: monthData.categories.filter((c) => c.id !== id) };
+            setMonthData(next);
+            saveNow(next);
+          }}
         />
         <ExpenseChart categories={monthData.categories} salary={totalIncome} />
       </div>
 
-      {/* Reset confirm modal */}
       {showResetConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-sm bg-[#111] border border-[#333] rounded-xl shadow-2xl">
