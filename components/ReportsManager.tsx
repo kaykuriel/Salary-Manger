@@ -9,7 +9,6 @@ type MonthReport = {
   salary: number;
   categories: Category[];
   extras: Extra[];
-  updatedAt: string;
 };
 
 function fmt(v: number) {

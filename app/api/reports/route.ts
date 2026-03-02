@@ -8,14 +8,14 @@ export async function GET(req: NextRequest) {
   const session = await getSessionFromRequest(req);
   if (!session) return NextResponse.json(null, { status: 401 });
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("salary_data")
-    .select("month_key, salary, categories, updated_at")
+    .select("month_key, salary, categories")
     .eq("user_id", session.userId)
     .neq("month_key", "__inv__")
     .order("month_key", { ascending: true });
 
-  if (!data) return NextResponse.json({ months: [] });
+  if (error || !data) return NextResponse.json({ months: [] });
 
   const months = data
     .map((row) => {
@@ -28,7 +28,6 @@ export async function GET(req: NextRequest) {
         salary: Number(row.salary) || 0,
         categories,
         extras,
-        updatedAt: row.updated_at,
       };
     })
     // Skip months with no data at all
