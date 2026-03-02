@@ -67,6 +67,7 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
   const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "ok" | "fail">("idle");
   const justLoadedRef = useRef(false);
   const isReloadRef = useRef(false);
   const [fetchKey, setFetchKey] = useState(0);
@@ -152,14 +153,26 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
   // Direct save — called immediately for every explicit user action
   function saveNow(data: MonthData) {
     isDirtyRef.current = false;
+    setSaveStatus("saving");
     fetch(`/api/data/${monthKey}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     })
       .then((r) => r.json())
-      .then((j) => { if (!j?.ok) console.error("Save failed:", j); })
-      .catch((e) => console.error("Save error:", e));
+      .then((j) => {
+        if (j?.ok) {
+          setSaveStatus("ok");
+          setTimeout(() => setSaveStatus("idle"), 2000);
+        } else {
+          setSaveStatus("fail");
+          console.error("Save failed:", j);
+        }
+      })
+      .catch((e) => {
+        setSaveStatus("fail");
+        console.error("Save error:", e);
+      });
   }
 
   function handleReset() {
@@ -184,12 +197,18 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
   return (
     <main className="py-8 px-4">
       <div className="max-w-2xl mx-auto flex flex-col gap-5">
+        {saveStatus === "fail" && (
+          <div className="px-4 py-2 bg-[#ff4444]/10 border border-[#ff4444]/30 rounded-lg text-xs text-[#ff4444] text-center">
+            Save failed — check your Supabase connection
+          </div>
+        )}
         <MonthNav
           monthKey={monthKey}
           onPrev={() => setMonthKey((k) => shiftMonth(k, -1))}
           onNext={() => setMonthKey((k) => shiftMonth(k, 1))}
           onReload={reload}
           loading={loading}
+          saveStatus={saveStatus}
         />
         <SalaryInput
           salary={monthData.salary}

@@ -6,6 +6,7 @@ interface MonthNavProps {
   onNext: () => void;
   onReload: () => void;
   loading?: boolean;
+  saveStatus?: "idle" | "saving" | "ok" | "fail";
 }
 
 function formatMonthKey(key: string) {
@@ -16,7 +17,7 @@ function formatMonthKey(key: string) {
   });
 }
 
-export default function MonthNav({ monthKey, onPrev, onNext, onReload, loading }: MonthNavProps) {
+export default function MonthNav({ monthKey, onPrev, onNext, onReload, loading, saveStatus }: MonthNavProps) {
   return (
     <div className="flex items-center justify-center gap-4 py-1">
       <button
@@ -44,6 +45,9 @@ export default function MonthNav({ monthKey, onPrev, onNext, onReload, loading }
         >
           ↻
         </button>
+        {saveStatus === "saving" && <span className="text-[10px] text-[#555]">saving…</span>}
+        {saveStatus === "ok"     && <span className="text-[10px] text-[#50e3c2]">saved ✓</span>}
+        {saveStatus === "fail"   && <span className="text-[10px] text-[#ff4444]">failed ✗</span>}
       </div>
 
       <button
