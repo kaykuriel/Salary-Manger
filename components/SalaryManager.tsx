@@ -134,7 +134,7 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(monthData),
       }).catch(() => {});
-    }, 600);
+    }, 300);
     return () => clearTimeout(timer);
   }, [monthData, hydrated, monthKey]);
 

@@ -243,12 +243,17 @@ export default function ReportsManager() {
   }
 
   useEffect(() => {
-    loadReports();
+    // 500ms delay on first load so any in-flight Dashboard save (keepalive PUT)
+    // has time to be written to the DB before we read.
+    const initialTimer = setTimeout(loadReports, 500);
     function onVisible() {
       if (document.visibilityState === "visible") loadReports();
     }
     document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    return () => {
+      clearTimeout(initialTimer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
