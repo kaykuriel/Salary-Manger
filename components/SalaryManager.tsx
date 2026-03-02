@@ -74,6 +74,8 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
   const latestMonthKeyRef = useRef(monthKey);
   const latestDataRef = useRef(monthData);
   const isDirtyRef = useRef(false);
+  // When true, the next save effect run fires immediately instead of debouncing
+  const saveImmediateRef = useRef(false);
 
   const reload = useCallback(() => {
     isReloadRef.current = true;
@@ -127,6 +129,19 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
       return;
     }
     isDirtyRef.current = true;
+
+    // Structural changes (add/delete) request an immediate save — no debounce
+    if (saveImmediateRef.current) {
+      saveImmediateRef.current = false;
+      isDirtyRef.current = false;
+      fetch(`/api/data/${monthKey}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(monthData),
+      }).catch(() => {});
+      return;
+    }
+
     const timer = setTimeout(() => {
       isDirtyRef.current = false;
       fetch(`/api/data/${monthKey}`, {
@@ -151,7 +166,8 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
     };
   }, []);
 
-  const update = useCallback((fn: (m: MonthData) => MonthData) => {
+  const update = useCallback((fn: (m: MonthData) => MonthData, immediate = false) => {
+    if (immediate) saveImmediateRef.current = true;
     setMonthData((prev) => fn(prev));
   }, []);
 
@@ -185,7 +201,7 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
         />
         <SalaryInput
           salary={monthData.salary}
-          onSave={(v) => update((m) => ({ ...m, salary: v }))}
+          onSave={(v) => update((m) => ({ ...m, salary: v }), true)}
           onResetRequest={() => setShowResetConfirm(true)}
         />
         <ExtrasSection
@@ -194,10 +210,10 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
             update((m) => ({
               ...m,
               extras: [...m.extras, { id: crypto.randomUUID(), name, amount }],
-            }))
+            }), true)
           }
           onDelete={(id) =>
-            update((m) => ({ ...m, extras: m.extras.filter((e) => e.id !== id) }))
+            update((m) => ({ ...m, extras: m.extras.filter((e) => e.id !== id) }), true)
           }
         />
         <SummaryCards salary={totalIncome} spent={totalSpent} />
@@ -214,14 +230,14 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
                   color: PALETTE[m.categories.length % PALETTE.length],
                 },
               ],
-            }))
+            }), true)
           }
         />
         <CategoryList
           categories={monthData.categories}
           salary={totalIncome}
           onDelete={(id) =>
-            update((m) => ({ ...m, categories: m.categories.filter((c) => c.id !== id) }))
+            update((m) => ({ ...m, categories: m.categories.filter((c) => c.id !== id) }), true)
           }
         />
         <ExpenseChart categories={monthData.categories} salary={totalIncome} />
