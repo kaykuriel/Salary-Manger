@@ -231,6 +231,8 @@ export default function ReportsManager() {
   const [months, setMonths] = useState<MonthReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/reports")
@@ -238,6 +240,14 @@ export default function ReportsManager() {
       .then((d) => { setMonths(d.months ?? []); setLoading(false); })
       .catch(() => { setError("Failed to load reports."); setLoading(false); });
   }, []);
+
+  async function deleteMonth(monthKey: string) {
+    setDeleting(monthKey);
+    await fetch(`/api/data/${monthKey}`, { method: "DELETE" }).catch(() => {});
+    setMonths((prev) => prev.filter((m) => m.monthKey !== monthKey));
+    setConfirmDelete(null);
+    setDeleting(null);
+  }
 
   if (loading) {
     return (
@@ -396,7 +406,8 @@ export default function ReportsManager() {
                       <th className="text-right px-3 py-2.5 font-mono tracking-widest font-normal">INCOME</th>
                       <th className="text-right px-3 py-2.5 font-mono tracking-widest font-normal">SPENT</th>
                       <th className="text-right px-3 py-2.5 font-mono tracking-widest font-normal">REMAINING</th>
-                      <th className="text-right px-5 py-2.5 font-mono tracking-widest font-normal hidden sm:table-cell">ITEMS</th>
+                      <th className="text-right px-3 py-2.5 font-mono tracking-widest font-normal hidden sm:table-cell">ITEMS</th>
+                      <th className="w-8 print:hidden" />
                     </tr>
                   </thead>
                   <tbody>
@@ -405,8 +416,10 @@ export default function ReportsManager() {
                       const spent = m.categories.reduce((s, c) => s + c.amount, 0);
                       const remaining = income - spent;
                       const savingsPct = income > 0 ? ((remaining / income) * 100).toFixed(1) : null;
+                      const isConfirming = confirmDelete === m.monthKey;
+                      const isDeleting = deleting === m.monthKey;
                       return (
-                        <tr key={m.monthKey} className="border-b border-[#141414] hover:bg-white/[0.02] transition-colors">
+                        <tr key={m.monthKey} className="border-b border-[#141414] hover:bg-white/[0.02] transition-colors group">
                           <td className="px-5 py-2.5 text-white font-mono">{m.monthKey}</td>
                           <td className="px-3 py-2.5 text-right text-white tabular-nums">${fmt(income)}</td>
                           <td className="px-3 py-2.5 text-right text-[#888] tabular-nums">${fmt(spent)}</td>
@@ -416,8 +429,35 @@ export default function ReportsManager() {
                               <span className="text-[#555] ml-1">({savingsPct}%)</span>
                             )}
                           </td>
-                          <td className="px-5 py-2.5 text-right text-[#555] hidden sm:table-cell">
+                          <td className="px-3 py-2.5 text-right text-[#555] hidden sm:table-cell">
                             {m.categories.length}
+                          </td>
+                          <td className="pr-3 py-2.5 text-right print:hidden">
+                            {isConfirming ? (
+                              <div className="flex items-center gap-1 justify-end">
+                                <button
+                                  onClick={() => setConfirmDelete(null)}
+                                  className="text-[10px] text-[#555] hover:text-white px-1.5 py-0.5 rounded transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={() => deleteMonth(m.monthKey)}
+                                  disabled={isDeleting}
+                                  className="text-[10px] px-1.5 py-0.5 bg-[#ff4444] hover:bg-red-600 text-white rounded transition-colors disabled:opacity-50"
+                                >
+                                  {isDeleting ? "…" : "Delete"}
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmDelete(m.monthKey)}
+                                className="opacity-0 group-hover:opacity-100 text-[#444] hover:text-[#ff4444] transition-all duration-150 text-xs w-5 h-5 flex items-center justify-center rounded hover:bg-[#ff4444]/10 ml-auto"
+                                aria-label={`Delete ${m.monthKey}`}
+                              >
+                                ✕
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );
@@ -432,6 +472,7 @@ export default function ReportsManager() {
                         {allTimeSavings < 0 ? "-" : "+"}${fmt(Math.abs(allTimeSavings))}
                       </td>
                       <td className="hidden sm:table-cell" />
+                      <td className="print:hidden" />
                     </tr>
                   </tfoot>
                 </table>
