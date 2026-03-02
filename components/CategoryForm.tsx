@@ -8,7 +8,6 @@ interface CategoryFormProps {
 
 function formatMoneyInput(value: string): string {
   let s = value;
-  // If no dot yet, treat a trailing comma as decimal separator
   if (!s.includes(".")) {
     s = s.replace(/,(\d{0,2})$/, ".$1");
   }
@@ -47,7 +46,7 @@ export default function CategoryForm({ onAdd }: CategoryFormProps) {
   }
 
   return (
-    <div className="card p-5 hover:border-[#3a0000]">
+    <div className="card p-5 hover:border-[#444]">
       <p className="text-xs font-mono uppercase tracking-widest text-[#666] mb-4">
         Add Expense
       </p>
@@ -62,9 +61,7 @@ export default function CategoryForm({ onAdd }: CategoryFormProps) {
             className="field"
           />
           <div className="relative flex-shrink-0">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] text-sm select-none pointer-events-none">
-              $
-            </span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] text-sm select-none pointer-events-none">$</span>
             <input
               type="text"
               inputMode="decimal"
@@ -77,7 +74,7 @@ export default function CategoryForm({ onAdd }: CategoryFormProps) {
           </div>
           <button type="submit" className="btn w-full sm:w-auto">Add</button>
         </div>
-        {error && <p className="text-[#ff2222] text-xs">{error}</p>}
+        {error && <p className="text-[#ff4444] text-xs">{error}</p>}
       </form>
     </div>
   );

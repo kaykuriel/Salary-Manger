@@ -9,12 +9,10 @@ function resizeImage(file: File, size = 256): Promise<string> {
     const url = URL.createObjectURL(file);
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      canvas.width = size;
-      canvas.height = size;
+      canvas.width = size; canvas.height = size;
       const ctx = canvas.getContext("2d")!;
       const min = Math.min(img.width, img.height);
-      const sx = (img.width - min) / 2;
-      const sy = (img.height - min) / 2;
+      const sx = (img.width - min) / 2, sy = (img.height - min) / 2;
       ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
       URL.revokeObjectURL(url);
       resolve(canvas.toDataURL("image/jpeg", 0.82));
@@ -25,16 +23,16 @@ function resizeImage(file: File, size = 256): Promise<string> {
 }
 
 export default function ProfileEditor({ username: initialUsername }: { username: string }) {
-  const [avatar, setAvatar]         = useState<string | null>(null);
+  const [avatar, setAvatar]               = useState<string | null>(null);
   const [avatarLoading, setAvatarLoading] = useState(false);
-  const [username, setUsername]     = useState(initialUsername);
-  const [currentPw, setCurrentPw]   = useState("");
-  const [newPw, setNewPw]           = useState("");
-  const [confirmPw, setConfirmPw]   = useState("");
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNew, setShowNew]       = useState(false);
-  const [saving, setSaving]         = useState(false);
-  const [msg, setMsg]               = useState<{ ok: boolean; text: string } | null>(null);
+  const [username, setUsername]           = useState(initialUsername);
+  const [currentPw, setCurrentPw]         = useState("");
+  const [newPw, setNewPw]                 = useState("");
+  const [confirmPw, setConfirmPw]         = useState("");
+  const [showCurrent, setShowCurrent]     = useState(false);
+  const [showNew, setShowNew]             = useState(false);
+  const [saving, setSaving]               = useState(false);
+  const [msg, setMsg]                     = useState<{ ok: boolean; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -44,17 +42,12 @@ export default function ProfileEditor({ username: initialUsername }: { username:
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAvatarLoading(true);
-    setMsg(null);
+    setAvatarLoading(true); setMsg(null);
     try {
       const base64 = await resizeImage(file);
       setAvatar(base64);
       const res = await updateProfile({ avatar: base64 });
-      if (res.ok) {
-        setMsg({ ok: true, text: "Photo updated!" });
-      } else {
-        setMsg({ ok: false, text: res.error ?? "Failed to save photo." });
-      }
+      setMsg(res.ok ? { ok: true, text: "Photo updated!" } : { ok: false, text: res.error ?? "Failed to save photo." });
     } catch {
       setMsg({ ok: false, text: "Failed to process image." });
     } finally {
@@ -64,27 +57,15 @@ export default function ProfileEditor({ username: initialUsername }: { username:
   }
 
   async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    setMsg(null);
-
-    if (newPw && newPw !== confirmPw) {
-      setMsg({ ok: false, text: "New passwords don't match." });
-      return;
-    }
-
+    e.preventDefault(); setMsg(null);
+    if (newPw && newPw !== confirmPw) { setMsg({ ok: false, text: "New passwords don't match." }); return; }
     const payload: Parameters<typeof updateProfile>[0] = {};
     if (username.trim() && username.trim() !== initialUsername) payload.username = username.trim();
     if (newPw) { payload.currentPassword = currentPw; payload.newPassword = newPw; }
-
-    if (Object.keys(payload).length === 0) {
-      setMsg({ ok: false, text: "No changes to save." });
-      return;
-    }
-
+    if (Object.keys(payload).length === 0) { setMsg({ ok: false, text: "No changes to save." }); return; }
     setSaving(true);
     const res = await updateProfile(payload);
     setSaving(false);
-
     if (!res.ok) {
       setMsg({ ok: false, text: res.error ?? "Failed." });
     } else {
@@ -97,19 +78,17 @@ export default function ProfileEditor({ username: initialUsername }: { username:
 
   return (
     <div className="max-w-sm mx-auto px-4 py-8 flex flex-col gap-6">
-
-      {/* Avatar */}
       <div className="flex flex-col items-center gap-3">
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={avatarLoading}
-          className="relative group w-24 h-24 rounded-full overflow-hidden border-2 border-[#280000] hover:border-[#cc0000] transition-colors duration-200 disabled:opacity-60"
+          className="relative group w-24 h-24 rounded-full overflow-hidden border-2 border-[#333] hover:border-[#cc0000] transition-colors duration-200 disabled:opacity-60"
         >
           {avatar ? (
             <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full bg-[#0a0000] flex items-center justify-center">
+            <div className="w-full h-full bg-[#111] flex items-center justify-center">
               <span className="text-2xl font-semibold text-[#444]">{initials}</span>
             </div>
           )}
@@ -122,88 +101,43 @@ export default function ProfileEditor({ username: initialUsername }: { username:
       </div>
 
       <form onSubmit={handleSave} className="flex flex-col gap-5">
-
-        {/* Account */}
-        <div className="card p-5 flex flex-col gap-4 hover:border-[#3a0000]">
+        <div className="card p-5 flex flex-col gap-4 hover:border-[#444]">
           <p className="text-xs font-mono uppercase tracking-widest text-[#555]">Account</p>
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-mono uppercase tracking-widest text-[#555]">Username</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="field"
-            />
+            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="field" />
           </div>
         </div>
 
-        {/* Password */}
-        <div className="card p-5 flex flex-col gap-4 hover:border-[#3a0000]">
+        <div className="card p-5 flex flex-col gap-4 hover:border-[#444]">
           <p className="text-xs font-mono uppercase tracking-widest text-[#555]">Change password</p>
-
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-mono uppercase tracking-widest text-[#555]">Current password</label>
             <div className="relative">
-              <input
-                type={showCurrent ? "text" : "password"}
-                value={currentPw}
-                onChange={(e) => setCurrentPw(e.target.value)}
-                placeholder="current password"
-                className="field pr-16"
-              />
-              <button
-                type="button"
-                onClick={() => setShowCurrent((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white text-xs transition-colors select-none"
-                tabIndex={-1}
-              >
+              <input type={showCurrent ? "text" : "password"} value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} placeholder="current password" className="field pr-16" />
+              <button type="button" onClick={() => setShowCurrent((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white text-xs transition-colors select-none" tabIndex={-1}>
                 {showCurrent ? "Hide" : "Show"}
               </button>
             </div>
           </div>
-
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-mono uppercase tracking-widest text-[#555]">New password</label>
             <div className="relative">
-              <input
-                type={showNew ? "text" : "password"}
-                value={newPw}
-                onChange={(e) => setNewPw(e.target.value)}
-                placeholder="new password"
-                className="field pr-16"
-              />
-              <button
-                type="button"
-                onClick={() => setShowNew((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white text-xs transition-colors select-none"
-                tabIndex={-1}
-              >
+              <input type={showNew ? "text" : "password"} value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="new password" className="field pr-16" />
+              <button type="button" onClick={() => setShowNew((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white text-xs transition-colors select-none" tabIndex={-1}>
                 {showNew ? "Hide" : "Show"}
               </button>
             </div>
           </div>
-
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-mono uppercase tracking-widest text-[#555]">Confirm new password</label>
-            <input
-              type="password"
-              value={confirmPw}
-              onChange={(e) => setConfirmPw(e.target.value)}
-              placeholder="confirm password"
-              className="field"
-            />
+            <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} placeholder="confirm password" className="field" />
           </div>
         </div>
 
-        {msg && (
-          <p className={`text-xs ${msg.ok ? "text-[#ff9090]" : "text-[#ff2222]"}`}>{msg.text}</p>
-        )}
+        {msg && <p className={`text-xs ${msg.ok ? "text-[#50e3c2]" : "text-[#ff4444]"}`}>{msg.text}</p>}
 
-        <button
-          type="submit"
-          disabled={saving || (username.trim() === initialUsername && !newPw)}
-          className="btn justify-center py-3 disabled:opacity-30 disabled:cursor-not-allowed"
-        >
+        <button type="submit" disabled={saving || (username.trim() === initialUsername && !newPw)} className="btn justify-center py-3 disabled:opacity-30 disabled:cursor-not-allowed">
           {saving ? "Saving…" : "Save changes"}
         </button>
       </form>

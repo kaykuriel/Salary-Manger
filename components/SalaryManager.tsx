@@ -14,9 +14,9 @@ type Extra = { id: string; name: string; amount: number };
 type MonthData = { salary: number; categories: Category[]; extras: Extra[] };
 
 const PALETTE = [
-  "#cc0000", "#ff4444", "#ff6600", "#e05000",
-  "#ff0055", "#aa0000", "#ff8800", "#dd0033",
-  "#ff3300", "#880000", "#ff5533", "#cc3300",
+  "#0070f3", "#50e3c2", "#f5a623", "#7928ca",
+  "#ff4444", "#ff0080", "#79ffe1", "#0070f3",
+  "#00b4d8", "#06d6a0", "#ffd166", "#ef476f",
 ];
 
 function getMonthKey(date: Date) {
@@ -40,7 +40,7 @@ function parseMonthData(data: Record<string, unknown> | null): MonthData {
       id:     typeof cat.id     === "string" ? cat.id : crypto.randomUUID(),
       name:   typeof cat.name   === "string" ? cat.name : "Unnamed",
       amount: Number(cat.amount) || 0,
-      color:  typeof cat.color  === "string" ? cat.color : "#cc0000",
+      color:  typeof cat.color  === "string" ? cat.color : "#0070f3",
     };
   });
 
@@ -206,7 +206,7 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
       {/* Reset confirm modal */}
       {showResetConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-sm bg-[#0a0000] border border-[#280000] rounded-xl shadow-2xl">
+          <div className="w-full max-w-sm bg-[#111] border border-[#333] rounded-xl shadow-2xl">
             <div className="p-6 flex flex-col gap-4">
               <p className="text-sm font-medium text-white">Reset this month?</p>
               <p className="text-xs text-[#666]">
@@ -215,13 +215,13 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
               <div className="flex gap-2 justify-end">
                 <button
                   onClick={() => setShowResetConfirm(false)}
-                  className="btn-ghost border border-[#280000] px-4 py-2 text-sm"
+                  className="btn-ghost border border-[#333] px-4 py-2 text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleReset}
-                  className="text-sm px-4 py-2 bg-[#ff2222] hover:bg-red-600 active:scale-[0.97] text-white rounded-lg transition-all"
+                  className="text-sm px-4 py-2 bg-[#ff4444] hover:bg-red-600 active:scale-[0.97] text-white rounded-lg transition-all"
                 >
                   Reset
                 </button>

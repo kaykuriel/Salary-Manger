@@ -74,19 +74,18 @@ export default function ExpenseChart({ categories, salary }: ExpenseChartProps) 
   const chartData = [
     ...validCats.map((c) => ({ value: c.amount, color: c.color, isRemaining: false })),
     ...(hasIncome && remaining > 0
-      ? [{ value: remaining, color: "#1a0000", isRemaining: true }]
+      ? [{ value: remaining, color: "#2e2e2e", isRemaining: true }]
       : []),
   ];
 
   const segments = buildDonut(chartData, 100, 100, 95, 63, 3);
 
   return (
-    <div className="bg-[#0a0000] border border-[#280000] rounded-xl p-5">
+    <div className="bg-[#111] border border-[#222] rounded-xl p-5">
       <p className="text-xs font-mono uppercase tracking-widest text-[#444] mb-4">
         Breakdown
       </p>
 
-      {/* Donut */}
       <div className="relative">
         <svg viewBox="0 0 200 200" className="w-full" style={{ maxHeight: 220 }}>
           {segments.map((seg, i) => (
@@ -94,44 +93,31 @@ export default function ExpenseChart({ categories, salary }: ExpenseChartProps) 
               key={i}
               d={seg.path}
               fill={seg.color}
-              stroke={seg.isRemaining ? "#280000" : "transparent"}
+              stroke={seg.isRemaining ? "#444" : "transparent"}
               strokeWidth={seg.isRemaining ? 0.5 : 0}
             />
           ))}
         </svg>
 
-        {/* Center label */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-[9px] font-mono uppercase tracking-widest text-[#444] mb-0.5">
-            spent
-          </span>
-          <span className="text-xl font-semibold text-white tabular-nums leading-none">
-            {fmtShort(spent)}
-          </span>
+          <span className="text-[9px] font-mono uppercase tracking-widest text-[#444] mb-0.5">spent</span>
+          <span className="text-xl font-semibold text-white tabular-nums leading-none">{fmtShort(spent)}</span>
           {hasIncome && (
-            <span className="text-[11px] text-[#555] mt-1 tabular-nums">
-              {spentPct.toFixed(1)}%
-            </span>
+            <span className="text-[11px] text-[#555] mt-1 tabular-nums">{spentPct.toFixed(1)}%</span>
           )}
         </div>
       </div>
 
-      {/* Legend */}
       <ul className="mt-3 flex flex-col">
         {validCats.map((cat) => {
-          const pctOfSpent  = spent > 0    ? (cat.amount / spent)  * 100 : 0;
-          const pctOfIncome = hasIncome     ? (cat.amount / salary) * 100 : 0;
+          const pctOfSpent  = spent > 0 ? (cat.amount / spent)  * 100 : 0;
+          const pctOfIncome = hasIncome  ? (cat.amount / salary) * 100 : 0;
           return (
-            <li
-              key={cat.id}
-              className="flex items-center gap-2 py-2.5 border-t border-[#1a0000] first:border-t-0"
-            >
+            <li key={cat.id} className="flex items-center gap-2 py-2.5 border-t border-[#1c1c1c] first:border-t-0">
               <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
               <span className="flex-1 text-sm text-[#ccc] truncate min-w-0">{cat.name}</span>
               <div className="flex items-center gap-2 flex-shrink-0 text-xs tabular-nums">
-                {hasIncome && (
-                  <span className="text-[#555] hidden sm:block">{pctOfIncome.toFixed(1)}%</span>
-                )}
+                {hasIncome && <span className="text-[#555] hidden sm:block">{pctOfIncome.toFixed(1)}%</span>}
                 <span className="text-[#666] w-10 text-right">{pctOfSpent.toFixed(0)}%</span>
               </div>
               <span className="text-sm font-semibold text-white tabular-nums whitespace-nowrap flex-shrink-0 text-right min-w-[72px]">
@@ -142,8 +128,8 @@ export default function ExpenseChart({ categories, salary }: ExpenseChartProps) 
         })}
 
         {hasIncome && remaining > 0 && (
-          <li className="flex items-center gap-2 py-2.5 border-t border-[#1a0000]">
-            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-[#333] bg-[#1a0000]" />
+          <li className="flex items-center gap-2 py-2.5 border-t border-[#1c1c1c]">
+            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-[#555] bg-[#2e2e2e]" />
             <span className="flex-1 text-sm text-[#777]">Remaining</span>
             <div className="flex items-center gap-2 flex-shrink-0 text-xs tabular-nums">
               <span className="text-[#555] w-10 text-right">{(100 - spentPct).toFixed(0)}%</span>
@@ -155,10 +141,10 @@ export default function ExpenseChart({ categories, salary }: ExpenseChartProps) 
         )}
 
         {hasIncome && remaining < 0 && (
-          <li className="flex items-center gap-2 py-2.5 border-t border-[#1a0000]">
-            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-[#ff2222]/50" />
-            <span className="flex-1 text-sm text-[#ff2222]/80">Over budget</span>
-            <span className="text-sm font-semibold text-[#ff2222] tabular-nums whitespace-nowrap flex-shrink-0 text-right min-w-[72px]">
+          <li className="flex items-center gap-2 py-2.5 border-t border-[#1c1c1c]">
+            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-[#ff4444]/50" />
+            <span className="flex-1 text-sm text-[#ff4444]/80">Over budget</span>
+            <span className="text-sm font-semibold text-[#ff4444] tabular-nums whitespace-nowrap flex-shrink-0 text-right min-w-[72px]">
               -${fmt(Math.abs(remaining))}
             </span>
           </li>

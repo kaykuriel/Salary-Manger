@@ -28,7 +28,6 @@ export default function SalaryInput({ salary, onSave, onResetRequest }: SalaryIn
     return decPart !== undefined ? `${intFormatted}.${decPart}` : intFormatted;
   }
 
-  // Sync display when salary changes from outside (month navigation)
   useEffect(() => {
     if (!focused) {
       setRaw(salary > 0 ? salary.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "");
@@ -76,7 +75,7 @@ export default function SalaryInput({ salary, onSave, onResetRequest }: SalaryIn
   }
 
   return (
-    <div className="card p-5 hover:border-[#3a0000] transition-colors duration-200">
+    <div className="card p-5 hover:border-[#444] transition-colors duration-200">
       <label className="block text-xs font-mono uppercase tracking-widest text-[#666] mb-3">
         Monthly Salary
       </label>
@@ -94,12 +93,12 @@ export default function SalaryInput({ salary, onSave, onResetRequest }: SalaryIn
           onBlur={commit}
           onKeyDown={handleKeyDown}
           placeholder="0.00"
-          className="flex-1 bg-transparent text-3xl font-semibold text-white placeholder-[#2a0000] outline-none border-b border-[#280000] focus:border-[#cc0000] transition-colors duration-200 pb-0.5"
+          className="flex-1 bg-transparent text-3xl font-semibold text-white placeholder-[#2a2a2a] outline-none border-b border-[#333] focus:border-[#cc0000] transition-colors duration-200 pb-0.5"
         />
         {salary > 0 && !focused && (
           <button
             onMouseDown={handleClear}
-            className="text-[#333] hover:text-[#ff2222] transition-colors duration-150 text-xs w-6 h-6 flex items-center justify-center rounded hover:bg-[#ff2222]/10 flex-shrink-0 mb-0.5"
+            className="text-[#333] hover:text-[#ff4444] transition-colors duration-150 text-xs w-6 h-6 flex items-center justify-center rounded hover:bg-[#ff4444]/10 flex-shrink-0 mb-0.5"
             aria-label="Clear salary"
             title="Clear salary"
           >

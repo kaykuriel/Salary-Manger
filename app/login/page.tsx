@@ -15,23 +15,16 @@ function LoginForm() {
   const registered = params.get("registered") === "1";
 
   useEffect(() => {
-    getSession().then((s) => {
-      if (s) router.replace("/dashboard");
-    });
+    getSession().then((s) => { if (s) router.replace("/dashboard"); });
   }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!username || !password) { setError("All fields required."); return; }
-    setError("");
-    setLoading(true);
+    setError(""); setLoading(true);
     const res = await loginUser(username, password);
     setLoading(false);
-    if (res.ok) {
-      router.push("/dashboard");
-    } else {
-      setError(res.error ?? "Authentication failed.");
-    }
+    if (res.ok) { router.push("/dashboard"); } else { setError(res.error ?? "Authentication failed."); }
   }
 
   return (
@@ -53,51 +46,20 @@ function LoginForm() {
       <div className="card p-6 flex flex-col gap-4">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-mono uppercase tracking-widest text-[#555]">
-              Username
-            </label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => { setUsername(e.target.value); setError(""); }}
-              placeholder="your username"
-              autoComplete="username"
-              autoFocus
-              className="field"
-            />
+            <label className="text-xs font-mono uppercase tracking-widest text-[#555]">Username</label>
+            <input type="text" value={username} onChange={(e) => { setUsername(e.target.value); setError(""); }} placeholder="your username" autoComplete="username" autoFocus className="field" />
           </div>
-
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-mono uppercase tracking-widest text-[#555]">
-              Password
-            </label>
+            <label className="text-xs font-mono uppercase tracking-widest text-[#555]">Password</label>
             <div className="relative">
-              <input
-                type={showPw ? "text" : "password"}
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setError(""); }}
-                placeholder="••••••••"
-                autoComplete="current-password"
-                className="field pr-16"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white text-xs transition-colors select-none"
-                tabIndex={-1}
-              >
+              <input type={showPw ? "text" : "password"} value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} placeholder="••••••••" autoComplete="current-password" className="field pr-16" />
+              <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white text-xs transition-colors select-none" tabIndex={-1}>
                 {showPw ? "Hide" : "Show"}
               </button>
             </div>
           </div>
-
-          {error && <p className="text-[#ff2222] text-xs -mt-1">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn w-full justify-center py-2.5 mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          {error && <p className="text-[#ff4444] text-xs -mt-1">{error}</p>}
+          <button type="submit" disabled={loading} className="btn w-full justify-center py-2.5 mt-1 disabled:opacity-50 disabled:cursor-not-allowed">
             {loading ? "Signing in…" : "Sign in"}
           </button>
         </form>
@@ -105,9 +67,7 @@ function LoginForm() {
 
       <p className="text-center text-xs text-[#555]">
         No account?{" "}
-        <a href="/register" className="text-[#cc0000] hover:underline">
-          Create one
-        </a>
+        <a href="/register" className="text-[#cc0000] hover:underline">Create one</a>
       </p>
     </div>
   );
@@ -116,9 +76,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <Suspense fallback={null}>
-        <LoginForm />
-      </Suspense>
+      <Suspense fallback={null}><LoginForm /></Suspense>
     </div>
   );
 }

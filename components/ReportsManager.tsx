@@ -39,7 +39,7 @@ function BarChart({
   data,
   height = 160,
   color1 = "#cc0000",
-  color2 = "#ff9090",
+  color2 = "#50e3c2",
   label1 = "Income",
   label2 = "Spent",
   showLegend = false,
@@ -94,7 +94,7 @@ function BarChart({
                 x2={chartW - paddingRight}
                 y1={y}
                 y2={y}
-                stroke="#1a0000"
+                stroke="#1a1a1a"
                 strokeWidth={1}
               />
               {i > 0 && (
@@ -250,7 +250,7 @@ export default function ReportsManager() {
   if (error) {
     return (
       <main className="py-8 px-4 text-center">
-        <p className="text-[#ff2222] text-sm">{error}</p>
+        <p className="text-[#ff4444] text-sm">{error}</p>
       </main>
     );
   }
@@ -310,7 +310,7 @@ export default function ReportsManager() {
             )}
             <button
               onClick={() => window.print()}
-              className="btn-ghost border border-[#280000] text-xs px-3 py-1.5"
+              className="btn-ghost border border-[#333] text-xs px-3 py-1.5"
               title="Print / Save as PDF"
             >
               ⎙ Print
@@ -339,7 +339,7 @@ export default function ReportsManager() {
                 { label: "Spent", value: fmtShort(allTimeSpent), sub: "all time" },
                 { label: "Savings", value: `${avgSavingsRate}%`, sub: "avg rate" },
               ].map((s) => (
-                <div key={s.label} className="card p-4 hover:border-[#3a0000]">
+                <div key={s.label} className="card p-4 hover:border-[#444]">
                   <p className="text-[10px] font-mono uppercase tracking-widest text-[#555] mb-1">{s.label}</p>
                   <p className="text-xl font-semibold text-white tabular-nums">{s.value}</p>
                   <p className="text-[10px] text-[#444] mt-0.5">{s.sub}</p>
@@ -349,7 +349,7 @@ export default function ReportsManager() {
 
             {/* Monthly trend chart */}
             {trendData.length > 0 && (
-              <div className="card p-5 hover:border-[#3a0000]">
+              <div className="card p-5 hover:border-[#444]">
                 <p className="text-xs font-mono uppercase tracking-widest text-[#555] mb-4">
                   Monthly Trend (last {last12.length} months)
                 </p>
@@ -357,7 +357,7 @@ export default function ReportsManager() {
                   data={trendData}
                   height={160}
                   color1="#cc0000"
-                  color2="#ff9090"
+                  color2="#50e3c2"
                   label1="Income"
                   label2="Spent"
                   showLegend
@@ -367,14 +367,14 @@ export default function ReportsManager() {
 
             {/* Category totals chart */}
             {catChartData.length > 0 && (
-              <div className="card p-5 hover:border-[#3a0000]">
+              <div className="card p-5 hover:border-[#444]">
                 <p className="text-xs font-mono uppercase tracking-widest text-[#555] mb-4">
                   Top Categories (all time)
                 </p>
                 <BarChart data={catChartData} height={140} color1="#ff4444" />
                 <ul className="mt-4 flex flex-col">
                   {topCats.map(([name, amt], i) => (
-                    <li key={name} className={`flex items-center justify-between py-2 ${i > 0 ? "border-t border-[#1a0000]" : ""}`}>
+                    <li key={name} className={`flex items-center justify-between py-2 ${i > 0 ? "border-t border-[#1a1a1a]" : ""}`}>
                       <span className="text-sm text-white">{name}</span>
                       <span className="text-sm font-semibold tabular-nums text-white">${fmt(amt)}</span>
                     </li>
@@ -384,14 +384,14 @@ export default function ReportsManager() {
             )}
 
             {/* Month-by-month table */}
-            <div className="card overflow-hidden hover:border-[#3a0000]">
-              <div className="px-5 py-3 border-b border-[#1e0000]">
+            <div className="card overflow-hidden hover:border-[#444]">
+              <div className="px-5 py-3 border-b border-[#222]">
                 <p className="text-xs font-mono uppercase tracking-widest text-[#555]">Month by Month</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="text-[#555] border-b border-[#1a0000]">
+                    <tr className="text-[#555] border-b border-[#1a1a1a]">
                       <th className="text-left px-5 py-2.5 font-mono tracking-widest font-normal">MONTH</th>
                       <th className="text-right px-3 py-2.5 font-mono tracking-widest font-normal">INCOME</th>
                       <th className="text-right px-3 py-2.5 font-mono tracking-widest font-normal">SPENT</th>
@@ -406,11 +406,11 @@ export default function ReportsManager() {
                       const remaining = income - spent;
                       const savingsPct = income > 0 ? ((remaining / income) * 100).toFixed(1) : null;
                       return (
-                        <tr key={m.monthKey} className="border-b border-[#140000] hover:bg-white/[0.02] transition-colors">
+                        <tr key={m.monthKey} className="border-b border-[#141414] hover:bg-white/[0.02] transition-colors">
                           <td className="px-5 py-2.5 text-white font-mono">{m.monthKey}</td>
                           <td className="px-3 py-2.5 text-right text-white tabular-nums">${fmt(income)}</td>
                           <td className="px-3 py-2.5 text-right text-[#888] tabular-nums">${fmt(spent)}</td>
-                          <td className={`px-3 py-2.5 text-right tabular-nums ${remaining < 0 ? "text-[#ff2222]" : "text-[#ff9090]"}`}>
+                          <td className={`px-3 py-2.5 text-right tabular-nums ${remaining < 0 ? "text-[#ff4444]" : "text-[#50e3c2]"}`}>
                             {remaining < 0 ? "-" : "+"}${fmt(Math.abs(remaining))}
                             {savingsPct !== null && (
                               <span className="text-[#555] ml-1">({savingsPct}%)</span>
@@ -424,11 +424,11 @@ export default function ReportsManager() {
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t border-[#280000]">
+                    <tr className="border-t border-[#333]">
                       <td className="px-5 py-2.5 text-xs font-mono uppercase tracking-widest text-[#555]">Total</td>
                       <td className="px-3 py-2.5 text-right text-white tabular-nums font-semibold">${fmt(allTimeIncome)}</td>
                       <td className="px-3 py-2.5 text-right text-[#888] tabular-nums font-semibold">${fmt(allTimeSpent)}</td>
-                      <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${allTimeSavings < 0 ? "text-[#ff2222]" : "text-[#ff9090]"}`}>
+                      <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${allTimeSavings < 0 ? "text-[#ff4444]" : "text-[#50e3c2]"}`}>
                         {allTimeSavings < 0 ? "-" : "+"}${fmt(Math.abs(allTimeSavings))}
                       </td>
                       <td className="hidden sm:table-cell" />

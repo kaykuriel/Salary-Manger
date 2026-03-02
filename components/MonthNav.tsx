@@ -21,7 +21,7 @@ export default function MonthNav({ monthKey, onPrev, onNext, onReload, loading }
     <div className="flex items-center justify-center gap-4 py-1">
       <button
         onClick={onPrev}
-        className="w-8 h-8 flex items-center justify-center border border-[#280000] text-[#555] hover:text-white hover:border-[#cc0000] active:scale-90 transition-all duration-150 rounded-lg text-base leading-none"
+        className="w-8 h-8 flex items-center justify-center border border-[#222] text-[#555] hover:text-white hover:border-[#cc0000] active:scale-90 transition-all duration-150 rounded-lg text-base leading-none"
         aria-label="Previous month"
       >
         ‹
@@ -48,7 +48,7 @@ export default function MonthNav({ monthKey, onPrev, onNext, onReload, loading }
 
       <button
         onClick={onNext}
-        className="w-8 h-8 flex items-center justify-center border border-[#280000] text-[#555] hover:text-white hover:border-[#cc0000] active:scale-90 transition-all duration-150 rounded-lg text-base leading-none"
+        className="w-8 h-8 flex items-center justify-center border border-[#222] text-[#555] hover:text-white hover:border-[#cc0000] active:scale-90 transition-all duration-150 rounded-lg text-base leading-none"
         aria-label="Next month"
       >
         ›
