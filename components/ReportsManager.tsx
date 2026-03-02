@@ -234,11 +234,23 @@ export default function ReportsManager() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  useEffect(() => {
+  function loadReports() {
+    setLoading(true);
+    setError("");
     fetch("/api/reports")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((d) => { setMonths(d.months ?? []); setLoading(false); })
       .catch(() => { setError("Failed to load reports."); setLoading(false); });
+  }
+
+  useEffect(() => {
+    loadReports();
+    function onVisible() {
+      if (document.visibilityState === "visible") loadReports();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function deleteMonth(monthKey: string) {

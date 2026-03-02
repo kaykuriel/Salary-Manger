@@ -70,6 +70,10 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
   const justLoadedRef = useRef(false);
   const isReloadRef = useRef(false);
   const [fetchKey, setFetchKey] = useState(0);
+  // Refs for flushing unsaved data on unmount
+  const latestMonthKeyRef = useRef(monthKey);
+  const latestDataRef = useRef(monthData);
+  const isDirtyRef = useRef(false);
 
   const reload = useCallback(() => {
     isReloadRef.current = true;
@@ -112,12 +116,19 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
 
   // Debounced save — skips the first run after a fresh load
   useEffect(() => {
+    // Always keep refs current so the unmount flush has the latest values
+    latestMonthKeyRef.current = monthKey;
+    latestDataRef.current = monthData;
+
     if (!hydrated) return;
     if (justLoadedRef.current) {
       justLoadedRef.current = false;
+      isDirtyRef.current = false;
       return;
     }
+    isDirtyRef.current = true;
     const timer = setTimeout(() => {
+      isDirtyRef.current = false;
       fetch(`/api/data/${monthKey}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -126,6 +137,19 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
     }, 600);
     return () => clearTimeout(timer);
   }, [monthData, hydrated, monthKey]);
+
+  // Flush any pending dirty data when navigating away (keepalive survives navigation)
+  useEffect(() => {
+    return () => {
+      if (!isDirtyRef.current) return;
+      fetch(`/api/data/${latestMonthKeyRef.current}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(latestDataRef.current),
+        keepalive: true,
+      }).catch(() => {});
+    };
+  }, []);
 
   const update = useCallback((fn: (m: MonthData) => MonthData) => {
     setMonthData((prev) => fn(prev));
