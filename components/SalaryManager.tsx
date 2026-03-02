@@ -172,9 +172,13 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
   }, []);
 
   function handleReset() {
-    update(() => empty());
+    // Mark as "just loaded" so the debounced save effect skips this state change
+    // (prevents debounce from re-creating an empty row right after the DELETE)
+    justLoadedRef.current = true;
+    isDirtyRef.current = false;
+    saveImmediateRef.current = false;
+    setMonthData(empty());
     setShowResetConfirm(false);
-    // Delete the row from the database entirely
     fetch(`/api/data/${monthKey}`, { method: "DELETE" }).catch(() => {});
   }
 

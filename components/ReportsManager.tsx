@@ -325,6 +325,14 @@ export default function ReportsManager() {
         <div className="flex items-center justify-between print:hidden">
           <h1 className="text-base font-semibold text-white tracking-tight">Reports</h1>
           <div className="flex gap-2">
+            <button
+              onClick={loadReports}
+              disabled={loading}
+              className={`btn-ghost border border-[#333] text-xs px-3 py-1.5 ${loading ? "opacity-50" : ""}`}
+              title="Refresh data"
+            >
+              {loading ? "…" : "↻ Refresh"}
+            </button>
             {months.length > 0 && (
               <button
                 onClick={() => exportExcel(months)}
