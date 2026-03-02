@@ -15,23 +15,31 @@ export async function GET(req: NextRequest) {
     .neq("month_key", "__inv__")
     .order("month_key", { ascending: true });
 
-  if (error || !data) return NextResponse.json({ months: [] });
+  if (error) return NextResponse.json({ months: [], _debug: { error: error.message, userId: session.userId } });
+  if (!data) return NextResponse.json({ months: [], _debug: { error: "no data", userId: session.userId } });
 
-  const months = data
-    .map((row) => {
-      const raw = row.categories;
-      const isLegacy = Array.isArray(raw);
-      const categories = isLegacy ? raw : (raw?.items ?? []);
-      const extras = isLegacy ? [] : (raw?.extras ?? []);
-      return {
-        monthKey: row.month_key,
-        salary: Number(row.salary) || 0,
-        categories,
-        extras,
-      };
-    })
-    // Skip months with no data at all
-    .filter((m) => m.salary > 0 || m.categories.length > 0 || m.extras.length > 0);
+  const mapped = data.map((row) => {
+    const raw = row.categories;
+    const isLegacy = Array.isArray(raw);
+    const categories = isLegacy ? raw : (raw?.items ?? []);
+    const extras = isLegacy ? [] : (raw?.extras ?? []);
+    return {
+      monthKey: row.month_key,
+      salary: Number(row.salary) || 0,
+      categories,
+      extras,
+    };
+  });
 
-  return NextResponse.json({ months });
+  const months = mapped.filter((m) => m.salary > 0 || m.categories.length > 0 || m.extras.length > 0);
+
+  return NextResponse.json({
+    months,
+    _debug: {
+      userId: session.userId,
+      rowsFound: data.length,
+      afterFilter: months.length,
+      firstRow: data[0] ? { month_key: data[0].month_key, salary: data[0].salary } : null,
+    },
+  });
 }

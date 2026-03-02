@@ -232,13 +232,14 @@ export default function ReportsManager() {
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [debug, setDebug] = useState<Record<string, unknown> | null>(null);
 
   function loadReports() {
     setLoading(true);
     setError("");
     fetch("/api/reports")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => { setMonths(d.months ?? []); setLoading(false); })
+      .then((d) => { setMonths(d.months ?? []); setDebug(d._debug ?? null); setLoading(false); })
       .catch(() => { setError("Failed to load reports."); setLoading(false); });
   }
 
@@ -359,9 +360,14 @@ export default function ReportsManager() {
         </div>
 
         {months.length === 0 ? (
-          <div className="card p-12 text-center">
+          <div className="card p-8 text-center flex flex-col gap-2">
             <p className="text-[#555] text-sm">No data recorded yet.</p>
-            <p className="text-[#444] text-xs mt-1">Add salary data in the Dashboard to see reports.</p>
+            <p className="text-[#444] text-xs">Add salary data in the Dashboard to see reports.</p>
+            {debug && (
+              <pre className="text-left text-[10px] text-[#444] bg-[#0a0a0a] rounded p-3 mt-2 overflow-x-auto">
+                {JSON.stringify(debug, null, 2)}
+              </pre>
+            )}
           </div>
         ) : (
           <>
