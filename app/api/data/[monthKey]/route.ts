@@ -28,6 +28,19 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   return NextResponse.json({ salary: Number(row.salary), categories, extras });
 }
 
+export async function DELETE(req: NextRequest, { params }: Ctx) {
+  const session = await getSessionFromRequest(req);
+  if (!session) return NextResponse.json(null, { status: 401 });
+
+  await supabase
+    .from("salary_data")
+    .delete()
+    .eq("user_id", session.userId)
+    .eq("month_key", params.monthKey);
+
+  return NextResponse.json({ ok: true });
+}
+
 export async function PUT(req: NextRequest, { params }: Ctx) {
   const session = await getSessionFromRequest(req);
   if (!session) return NextResponse.json(null, { status: 401 });

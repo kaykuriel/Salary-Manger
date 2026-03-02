@@ -134,12 +134,8 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
   function handleReset() {
     update(() => empty());
     setShowResetConfirm(false);
-    // Immediately save empty state
-    fetch(`/api/data/${monthKey}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(empty()),
-    }).catch(() => {});
+    // Delete the row from the database entirely
+    fetch(`/api/data/${monthKey}`, { method: "DELETE" }).catch(() => {});
   }
 
   const totalSpent = monthData.categories.reduce((s, c) => s + c.amount, 0);

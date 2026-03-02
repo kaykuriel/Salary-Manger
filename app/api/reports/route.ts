@@ -17,19 +17,22 @@ export async function GET(req: NextRequest) {
 
   if (!data) return NextResponse.json({ months: [] });
 
-  const months = data.map((row) => {
-    const raw = row.categories;
-    const isLegacy = Array.isArray(raw);
-    const categories = isLegacy ? raw : (raw?.items ?? []);
-    const extras = isLegacy ? [] : (raw?.extras ?? []);
-    return {
-      monthKey: row.month_key,
-      salary: Number(row.salary) || 0,
-      categories,
-      extras,
-      updatedAt: row.updated_at,
-    };
-  });
+  const months = data
+    .map((row) => {
+      const raw = row.categories;
+      const isLegacy = Array.isArray(raw);
+      const categories = isLegacy ? raw : (raw?.items ?? []);
+      const extras = isLegacy ? [] : (raw?.extras ?? []);
+      return {
+        monthKey: row.month_key,
+        salary: Number(row.salary) || 0,
+        categories,
+        extras,
+        updatedAt: row.updated_at,
+      };
+    })
+    // Skip months with no data at all
+    .filter((m) => m.salary > 0 || m.categories.length > 0 || m.extras.length > 0);
 
   return NextResponse.json({ months });
 }
