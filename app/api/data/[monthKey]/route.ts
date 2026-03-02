@@ -50,16 +50,20 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   const categories = Array.isArray(body.categories) ? body.categories : [];
   const extras = Array.isArray(body.extras) ? body.extras : [];
 
-  await supabase.from("salary_data").upsert(
+  const { error } = await supabase.from("salary_data").upsert(
     {
       user_id: session.userId,
       month_key: params.monthKey,
       salary,
       categories: { items: categories, extras },
-      updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id,month_key" }
   );
+
+  if (error) {
+    console.error("upsert error:", error.message, error.details);
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }

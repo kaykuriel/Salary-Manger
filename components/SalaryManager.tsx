@@ -156,7 +156,10 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
-    }).catch(() => {});
+    })
+      .then((r) => r.json())
+      .then((j) => { if (!j?.ok) console.error("Save failed:", j); })
+      .catch((e) => console.error("Save error:", e));
   }
 
   function handleReset() {
