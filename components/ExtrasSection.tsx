@@ -98,7 +98,7 @@ export default function ExtrasSection({ extras, onAdd, onDelete }: ExtrasSection
                 <span className="text-sm font-semibold tabular-nums text-[#50e3c2]">+${fmt(ex.amount)}</span>
                 <button
                   onClick={() => onDelete(ex.id)}
-                  className="opacity-0 group-hover:opacity-100 text-[#555] hover:text-[#ff4444] transition-all duration-150 text-xs w-5 h-5 flex items-center justify-center rounded hover:bg-[#ff4444]/10"
+                  className="text-[#444] sm:opacity-0 sm:group-hover:opacity-100 hover:text-[#ff4444] transition-all duration-150 text-xs w-5 h-5 flex items-center justify-center rounded hover:bg-[#ff4444]/10"
                   aria-label={`Remove ${ex.name}`}
                 >
                   ✕

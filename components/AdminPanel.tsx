@@ -221,8 +221,8 @@ export default function AdminPanel({ currentUserId }: { currentUserId: string })
               const isExp = expanded === u.id;
               return (
                 <li key={u.id} className={i > 0 ? "border-t border-[#1a1a1a]" : ""}>
-                  <div className="px-5 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
-                    <div className="flex items-center gap-3 min-w-0">
+                  <div className="px-4 sm:px-5 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-white/[0.02] transition-colors">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-8 h-8 rounded-full overflow-hidden border border-[#2a2a2a] flex-shrink-0">
                         {u.avatar ? (
                           <img src={u.avatar} alt={u.username} className="w-full h-full object-cover" />
@@ -245,7 +245,7 @@ export default function AdminPanel({ currentUserId }: { currentUserId: string })
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
+                    <div className="flex items-center gap-1 flex-shrink-0 sm:ml-0 ml-[44px]">
                       <button onClick={() => setExpanded(isExp ? null : u.id)} className="btn-ghost text-xs">{isExp ? "Hide" : "View data"}</button>
                       {!isMe && (
                         <>

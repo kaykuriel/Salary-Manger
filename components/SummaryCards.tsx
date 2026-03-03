@@ -25,7 +25,7 @@ export default function SummaryCards({ salary, spent }: SummaryCardsProps) {
         <p className="text-xs font-mono uppercase tracking-widest text-[#666] mb-1.5">
           {isOver ? "Over budget by" : "Remaining"}
         </p>
-        <p className={`text-5xl font-semibold tabular-nums tracking-tight leading-none ${isOver ? "text-[#ff4444]" : "text-white"}`}>
+        <p className={`text-4xl sm:text-5xl font-semibold tabular-nums tracking-tight leading-none ${isOver ? "text-[#ff4444]" : "text-white"}`}>
           {isOver ? "-" : ""}${fmt(isOver ? Math.abs(remaining) : remaining)}
         </p>
         {salary > 0 && (

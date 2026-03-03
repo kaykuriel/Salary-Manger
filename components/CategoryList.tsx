@@ -54,7 +54,7 @@ export default function CategoryList({ categories, salary, onDelete }: CategoryL
                   <span className="text-sm font-semibold tabular-nums text-white">${fmt(cat.amount)}</span>
                   <button
                     onClick={() => onDelete(cat.id)}
-                    className="opacity-0 group-hover:opacity-100 text-[#555] hover:text-[#ff4444] transition-all duration-150 text-xs w-5 h-5 flex items-center justify-center rounded hover:bg-[#ff4444]/10"
+                    className="text-[#444] sm:opacity-0 sm:group-hover:opacity-100 hover:text-[#ff4444] transition-all duration-150 text-xs w-5 h-5 flex items-center justify-center rounded hover:bg-[#ff4444]/10"
                     aria-label={`Delete ${cat.name}`}
                   >
                     ✕

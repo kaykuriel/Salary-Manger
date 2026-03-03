@@ -229,7 +229,7 @@ function EmojiPicker({
 
       {open && (
         <div
-          className={`absolute top-full mt-2 w-72 bg-[#0d0d0d] border border-[#222] rounded-xl shadow-2xl shadow-black/90 z-[100] overflow-hidden ${
+          className={`absolute top-full mt-2 w-72 max-w-[calc(100vw-32px)] bg-[#0d0d0d] border border-[#222] rounded-xl shadow-2xl shadow-black/90 z-[100] overflow-hidden ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >
