@@ -7,6 +7,7 @@ import type { Session } from "@/lib/auth";
 
 const NAV = [
   { label: "Dashboard", href: "/dashboard", icon: "◈" },
+  { label: "Goals",     href: "/goals",     icon: "◎" },
   { label: "Converter", href: "/converter", icon: "⇄" },
 ];
 

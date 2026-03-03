@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import type { Session } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
-import ReportsManager from "@/components/ReportsManager";
+import GoalsManager from "@/components/GoalsManager";
 
-export default function ReportsPage() {
+export default function GoalsPage() {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
 
@@ -29,7 +29,7 @@ export default function ReportsPage() {
   return (
     <div className="min-h-screen bg-black">
       <Navbar session={session} />
-      <ReportsManager />
+      <GoalsManager />
     </div>
   );
 }

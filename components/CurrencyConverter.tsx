@@ -1,250 +1,386 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
-const FIAT = [
-  { code: "USD", name: "US Dollar"        },
-  { code: "EUR", name: "Euro"             },
-  { code: "GBP", name: "British Pound"    },
-  { code: "BRL", name: "Brazilian Real"   },
-  { code: "JPY", name: "Japanese Yen"     },
-  { code: "CAD", name: "Canadian Dollar"  },
-  { code: "AUD", name: "Australian Dollar"},
-  { code: "CHF", name: "Swiss Franc"      },
-  { code: "MXN", name: "Mexican Peso"     },
-  { code: "CNY", name: "Chinese Yuan"     },
-  { code: "KRW", name: "Korean Won"       },
-  { code: "INR", name: "Indian Rupee"     },
-  { code: "SEK", name: "Swedish Krona"    },
-  { code: "NOK", name: "Norwegian Krone"  },
-  { code: "PLN", name: "Polish Złoty"     },
+// ─── Config ─────────────────────────────────────────────────────────────────
+
+const PAIRS = [
+  { symbol: "BTCUSDT",  name: "Bitcoin",    short: "BTC"  },
+  { symbol: "ETHUSDT",  name: "Ethereum",   short: "ETH"  },
+  { symbol: "BNBUSDT",  name: "BNB",        short: "BNB"  },
+  { symbol: "SOLUSDT",  name: "Solana",     short: "SOL"  },
+  { symbol: "XRPUSDT",  name: "XRP",        short: "XRP"  },
+  { symbol: "ADAUSDT",  name: "Cardano",    short: "ADA"  },
+  { symbol: "DOGEUSDT", name: "Dogecoin",   short: "DOGE" },
+  { symbol: "AVAXUSDT", name: "Avalanche",  short: "AVAX" },
+  { symbol: "DOTUSDT",  name: "Polkadot",   short: "DOT"  },
+  { symbol: "LINKUSDT", name: "Chainlink",  short: "LINK" },
 ];
 
-const CRYPTO = [
-  { code: "BTC",   name: "Bitcoin",   geckoId: "bitcoin"       },
-  { code: "ETH",   name: "Ethereum",  geckoId: "ethereum"      },
-  { code: "BNB",   name: "BNB",       geckoId: "binancecoin"   },
-  { code: "SOL",   name: "Solana",    geckoId: "solana"        },
-  { code: "XRP",   name: "XRP",       geckoId: "ripple"        },
-  { code: "ADA",   name: "Cardano",   geckoId: "cardano"       },
-  { code: "DOGE",  name: "Dogecoin",  geckoId: "dogecoin"      },
-  { code: "AVAX",  name: "Avalanche", geckoId: "avalanche-2"   },
-  { code: "DOT",   name: "Polkadot",  geckoId: "polkadot"      },
-  { code: "MATIC", name: "Polygon",   geckoId: "matic-network" },
-];
+const FIAT_CODES = ["EUR", "BRL", "GBP", "JPY", "CAD", "CHF", "AUD", "ARS", "MXN", "CNY"];
 
-type RatesMap = Record<string, number>;
+const WS_URL =
+  "wss://stream.binance.com:9443/stream?streams=" +
+  PAIRS.map((p) => `${p.symbol.toLowerCase()}@ticker`).join("/");
 
-function fmtResult(v: number, code: string): string {
-  const isCrypto = CRYPTO.some((c) => c.code === code);
-  if (isCrypto) {
-    return v >= 1
-      ? v.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })
-      : v.toLocaleString("en-US", { minimumFractionDigits: 8, maximumFractionDigits: 8 });
-  }
-  return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type Ticker = {
+  price: number;
+  changePct: number;
+  high: number;
+  low: number;
+  volUsdt: number;
+  flash: "up" | "down" | null;
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function fmtPrice(v: number): string {
-  if (v >= 1000) return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  if (v >= 1)    return v.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
-  return v.toLocaleString("en-US", { minimumFractionDigits: 6, maximumFractionDigits: 6 });
+  if (v >= 10000) return v.toLocaleString("en-US", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+  if (v >= 1)     return v.toLocaleString("en-US", { maximumFractionDigits: 4, minimumFractionDigits: 2 });
+  return v.toLocaleString("en-US", { maximumFractionDigits: 6, minimumFractionDigits: 4 });
 }
 
-const SELECT_CLS = "w-40 flex-shrink-0 cursor-pointer bg-[#0d0d0d] border border-[#333] rounded-lg px-3 py-2 text-sm text-white outline-none transition-all duration-150 focus:border-[#cc0000] focus:ring-1 focus:ring-[#cc0000]/20";
+function fmtVol(v: number): string {
+  if (v >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(1)}B`;
+  if (v >= 1_000_000)     return `$${(v / 1_000_000).toFixed(1)}M`;
+  return `$${(v / 1_000).toFixed(1)}K`;
+}
+
+function fmtResult(v: number): string {
+  if (v === 0) return "0";
+  if (v >= 1)  return v.toLocaleString("en-US", { maximumFractionDigits: 6 });
+  return v.toFixed(10).replace(/\.?0+$/, "");
+}
+
+// ─── Main component ──────────────────────────────────────────────────────────
 
 export default function CurrencyConverter() {
-  const [rates,     setRates]     = useState<RatesMap | null>(null);
-  const [fetching,  setFetching]  = useState(true);
-  const [error,     setError]     = useState("");
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [tickers, setTickers] = useState<Record<string, Ticker>>({});
+  const [fiatRates, setFiatRates] = useState<Record<string, number>>({}); // X per 1 USD
+  const [wsStatus, setWsStatus] = useState<"connecting" | "live" | "error">("connecting");
+  const [fiatAge, setFiatAge] = useState<number | null>(null); // seconds since last fiat fetch
 
-  const [amountRaw,     setAmountRaw]     = useState("1");
-  const [amountFocused, setAmountFocused] = useState(false);
-  const [from, setFrom] = useState("USD");
-  const [to,   setTo]   = useState("BRL");
+  const [fromAmt, setFromAmt] = useState("1");
+  const [fromCur, setFromCur] = useState("BTC");
+  const [toCur, setToCur] = useState("USDT");
 
-  const amountNum = parseFloat(amountRaw.replace(/,/g, "")) || 0;
-  const amountDisplay = amountFocused
-    ? amountRaw
-    : amountNum > 0
-    ? amountNum.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : amountRaw;
+  const wsRef = useRef<WebSocket | null>(null);
+  const flashTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fiatTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const fiatAgeTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mountedRef = useRef(true);
+  const fiatFetchedAt = useRef<number | null>(null);
 
-  const fetchRates = useCallback(async () => {
-    setFetching(true); setError("");
-    try {
-      const geckoIds = CRYPTO.map((c) => c.geckoId).join(",");
-      const [fiatRes, cryptoRes] = await Promise.all([
-        fetch("https://api.frankfurter.app/latest?from=USD"),
-        fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${geckoIds}&vs_currencies=usd`),
-      ]);
-      const fiatData   = await fiatRes.json();
-      const cryptoData = await cryptoRes.json();
+  // ── WebSocket ──────────────────────────────────────────────────────────────
 
-      const map: RatesMap = { USD: 1 };
-      for (const [code, rate] of Object.entries(fiatData.rates as Record<string, number>)) {
-        map[code] = 1 / rate;
-      }
-      for (const crypto of CRYPTO) {
-        const price = (cryptoData[crypto.geckoId] as { usd?: number })?.usd;
-        if (price) map[crypto.code] = price;
-      }
-      setRates(map);
-      setUpdatedAt(new Date());
-    } catch {
-      setError("Could not fetch rates. Check your connection.");
-    } finally {
-      setFetching(false);
-    }
+  const connect = useCallback(() => {
+    if (!mountedRef.current) return;
+    setWsStatus("connecting");
+    const ws = new WebSocket(WS_URL);
+    wsRef.current = ws;
+
+    ws.onopen = () => { if (mountedRef.current) setWsStatus("live"); };
+
+    ws.onmessage = (evt) => {
+      if (!mountedRef.current) return;
+      try {
+        const msg = JSON.parse(evt.data as string);
+        const d = msg.data;
+        if (!d || d.e !== "24hrTicker") return;
+        const sym = d.s as string;
+        const newPrice = parseFloat(d.c);
+
+        setTickers((prev) => {
+          const old = prev[sym];
+          const flash: Ticker["flash"] = old
+            ? newPrice > old.price ? "up" : newPrice < old.price ? "down" : null
+            : null;
+
+          if (flash) {
+            if (flashTimers.current[sym]) clearTimeout(flashTimers.current[sym]);
+            flashTimers.current[sym] = setTimeout(() => {
+              if (!mountedRef.current) return;
+              setTickers((p) => p[sym] ? { ...p, [sym]: { ...p[sym], flash: null } } : p);
+            }, 600);
+          }
+
+          return {
+            ...prev,
+            [sym]: {
+              price: newPrice,
+              changePct: parseFloat(d.P),
+              high: parseFloat(d.h),
+              low: parseFloat(d.l),
+              volUsdt: parseFloat(d.q),
+              flash,
+            },
+          };
+        });
+      } catch { /* ignore malformed */ }
+    };
+
+    ws.onerror = () => { if (mountedRef.current) setWsStatus("error"); };
+
+    ws.onclose = () => {
+      if (!mountedRef.current) return;
+      setWsStatus("connecting");
+      reconnectTimer.current = setTimeout(connect, 3000);
+    };
   }, []);
 
-  useEffect(() => { fetchRates(); }, [fetchRates]);
+  // ── Fiat rates ─────────────────────────────────────────────────────────────
 
-  function convert(amt: number, f: string, t: string): number | null {
-    if (!rates) return null;
-    const a = rates[f], b = rates[t];
-    if (!a || !b) return null;
-    return (amt * a) / b;
+  const fetchFiat = useCallback(async () => {
+    try {
+      const r = await fetch(
+        `https://api.frankfurter.app/latest?from=USD&to=${FIAT_CODES.join(",")}`
+      );
+      if (!r.ok) return;
+      const json = await r.json();
+      if (mountedRef.current) {
+        setFiatRates(json.rates ?? {});
+        fiatFetchedAt.current = Date.now();
+        setFiatAge(0);
+      }
+    } catch { /* network error, ignore */ }
+  }, []);
+
+  // ── Mount / unmount ────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    mountedRef.current = true;
+    connect();
+    fetchFiat();
+
+    fiatTimer.current = setInterval(fetchFiat, 60_000);
+    fiatAgeTimer.current = setInterval(() => {
+      if (fiatFetchedAt.current) {
+        setFiatAge(Math.floor((Date.now() - fiatFetchedAt.current) / 1000));
+      }
+    }, 5000);
+
+    return () => {
+      mountedRef.current = false;
+      wsRef.current?.close();
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      if (fiatTimer.current) clearInterval(fiatTimer.current);
+      if (fiatAgeTimer.current) clearInterval(fiatAgeTimer.current);
+      Object.values(flashTimers.current).forEach(clearTimeout);
+    };
+  }, [connect, fetchFiat]);
+
+  // ── Converter logic ────────────────────────────────────────────────────────
+
+  function toUsd(cur: string, amount: number): number {
+    if (cur === "USDT" || cur === "USD") return amount;
+    const pair = PAIRS.find((p) => p.short === cur);
+    if (pair) return amount * (tickers[pair.symbol]?.price ?? 0);
+    // fiat: 1 USD = fiatRates[cur] units, so 1 unit = 1/fiatRates[cur] USD
+    return fiatRates[cur] ? amount / fiatRates[cur] : 0;
   }
 
-  const result   = convert(amountNum, from, to);
-  const unitRate = convert(1, from, to);
+  function fromUsd(cur: string, usd: number): number {
+    if (cur === "USDT" || cur === "USD") return usd;
+    const pair = PAIRS.find((p) => p.short === cur);
+    if (pair) return tickers[pair.symbol]?.price ? usd / tickers[pair.symbol].price : 0;
+    return fiatRates[cur] ? usd * fiatRates[cur] : 0;
+  }
 
-  const updatedAgo = updatedAt ? (() => {
-    const s = Math.floor((Date.now() - updatedAt.getTime()) / 1000);
-    if (s < 60) return "just now";
-    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-    return `${Math.floor(s / 3600)}h ago`;
-  })() : "";
+  const amount = parseFloat(fromAmt.replace(/,/g, "")) || 0;
+  const resultUsd = toUsd(fromCur, amount);
+  const result = fromUsd(toCur, resultUsd);
 
-  const selectContent = (
-    <>
-      <optgroup label="── Fiat ──">
-        {FIAT.map((f) => <option key={f.code} value={f.code}>{f.code} — {f.name}</option>)}
-      </optgroup>
-      <optgroup label="── Crypto ──">
-        {CRYPTO.map((c) => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
-      </optgroup>
-    </>
-  );
+  // All available currencies for converter selects
+  const ALL_CURRENCIES = [
+    "USDT",
+    ...PAIRS.map((p) => p.short),
+    "USD",
+    ...FIAT_CODES,
+  ];
+
+  // ── UI ─────────────────────────────────────────────────────────────────────
 
   return (
     <main className="py-8 px-4">
       <div className="max-w-2xl mx-auto flex flex-col gap-5">
 
-        <div className="flex items-center justify-center gap-2 py-1">
-          <span className="text-base font-semibold text-white tracking-tight select-none">Converter</span>
-          <button
-            onClick={fetchRates}
-            disabled={fetching}
-            className={`w-6 h-6 flex items-center justify-center rounded text-base transition-all active:scale-90 ${fetching ? "animate-spin text-[#cc0000]" : "text-[#333] hover:text-[#888]"}`}
-            title="Refresh rates"
-          >↻</button>
-          {updatedAt && !fetching && <span className="text-xs text-[#444]">· {updatedAgo}</span>}
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-base font-semibold text-white tracking-tight">Market</h1>
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                wsStatus === "live" ? "bg-[#50e3c2]" : wsStatus === "error" ? "bg-[#ff4444]" : "bg-[#f5a623]"
+              }`}
+              style={wsStatus === "live" ? { animation: "pulse 2s infinite" } : undefined}
+            />
+            <span className="text-[10px] font-mono text-[#555]">
+              {wsStatus === "live" ? "LIVE" : wsStatus === "error" ? "ERROR" : "CONNECTING…"}
+            </span>
+          </div>
         </div>
 
-        <div className="card p-5 hover:border-[#444]">
-          {error && <p className="text-[#ff4444] text-xs mb-4">{error}</p>}
-          <div className="flex flex-col gap-3">
-            <div className="flex gap-2">
+        {/* Ticker table */}
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[#1a1a1a] text-[#444]">
+                  <th className="text-left px-4 py-2.5 font-mono tracking-widest font-normal">PAIR</th>
+                  <th className="text-right px-3 py-2.5 font-mono tracking-widest font-normal">PRICE</th>
+                  <th className="text-right px-3 py-2.5 font-mono tracking-widest font-normal">24H %</th>
+                  <th className="text-right px-3 py-2.5 font-mono tracking-widest font-normal hidden sm:table-cell">HIGH</th>
+                  <th className="text-right px-3 py-2.5 font-mono tracking-widest font-normal hidden sm:table-cell">LOW</th>
+                  <th className="text-right px-4 py-2.5 font-mono tracking-widest font-normal hidden md:table-cell">VOL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {PAIRS.map((pair) => {
+                  const t = tickers[pair.symbol];
+                  const up = (t?.changePct ?? 0) >= 0;
+                  const flashColor =
+                    t?.flash === "up"
+                      ? "bg-[#50e3c2]/10"
+                      : t?.flash === "down"
+                      ? "bg-[#ff4444]/10"
+                      : "";
+                  return (
+                    <tr
+                      key={pair.symbol}
+                      className={`border-b border-[#0d0d0d] transition-colors duration-300 ${flashColor}`}
+                    >
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-white">{pair.short}</span>
+                          <span className="text-[#444] hidden sm:inline">/USDT</span>
+                        </div>
+                        <p className="text-[10px] text-[#444] hidden sm:block">{pair.name}</p>
+                      </td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">
+                        {t ? (
+                          <span
+                            className="font-mono text-white font-medium transition-colors duration-300"
+                            style={{ color: t.flash === "up" ? "#50e3c2" : t.flash === "down" ? "#ff4444" : "white" }}
+                          >
+                            ${fmtPrice(t.price)}
+                          </span>
+                        ) : (
+                          <span className="text-[#333]">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">
+                        {t ? (
+                          <span className={`font-mono font-medium ${up ? "text-[#50e3c2]" : "text-[#ff4444]"}`}>
+                            {up ? "+" : ""}{t.changePct.toFixed(2)}%
+                          </span>
+                        ) : (
+                          <span className="text-[#333]">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-[#555] hidden sm:table-cell">
+                        {t ? `$${fmtPrice(t.high)}` : "—"}
+                      </td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-[#555] hidden sm:table-cell">
+                        {t ? `$${fmtPrice(t.low)}` : "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-[#444] hidden md:table-cell">
+                        {t ? fmtVol(t.volUsdt) : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Converter */}
+        <div className="card p-5">
+          <p className="text-xs font-mono uppercase tracking-widest text-[#555] mb-4">Converter</p>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {/* From */}
+            <div className="flex gap-2 flex-1">
               <input
-                type="text" inputMode="decimal"
-                value={amountDisplay}
-                onChange={(e) => setAmountRaw(e.target.value)}
-                onFocus={() => setAmountFocused(true)}
-                onBlur={() => setAmountFocused(false)}
-                onKeyDown={(e) => { if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault(); }}
-                placeholder="1.00"
-                className="field text-xl font-semibold"
+                type="text"
+                value={fromAmt}
+                onChange={(e) => setFromAmt(e.target.value)}
+                className="field flex-1 text-right tabular-nums font-mono"
+                placeholder="0"
               />
-              <select value={from} onChange={(e) => setFrom(e.target.value)} className={SELECT_CLS}>{selectContent}</select>
+              <select
+                value={fromCur}
+                onChange={(e) => setFromCur(e.target.value)}
+                className="field w-28 flex-shrink-0"
+              >
+                {ALL_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-[#1e1e1e]" />
-              <button
-                onClick={() => { setFrom(to); setTo(from); }}
-                className="text-[#444] hover:text-white transition-all duration-150 w-8 h-8 flex items-center justify-center border border-[#222] rounded-lg text-sm active:scale-90 hover:border-[#cc0000]"
-                title="Swap"
-              >⇅</button>
-              <div className="flex-1 h-px bg-[#1e1e1e]" />
-            </div>
+            {/* Swap */}
+            <button
+              onClick={() => { setFromCur(toCur); setToCur(fromCur); }}
+              className="btn-ghost border border-[#333] px-3 py-2 text-base self-center flex-shrink-0 hover:border-[#555] transition-colors"
+              title="Swap currencies"
+            >
+              ⇄
+            </button>
 
-            <div className="flex gap-2">
-              <div className="flex-1 bg-[#0a0a0a] border border-[#222] rounded-lg px-3 py-2 flex items-center min-h-[42px]">
-                {fetching ? (
-                  <span className="text-[#444] text-sm">Loading…</span>
-                ) : result !== null ? (
-                  <span className="text-xl font-semibold text-white tabular-nums">{fmtResult(result, to)}</span>
-                ) : (
-                  <span className="text-[#444] text-sm">—</span>
-                )}
-              </div>
-              <select value={to} onChange={(e) => setTo(e.target.value)} className={SELECT_CLS}>{selectContent}</select>
+            {/* To */}
+            <div className="flex gap-2 flex-1">
+              <input
+                type="text"
+                value={fmtResult(result)}
+                readOnly
+                className="field flex-1 text-right tabular-nums font-mono bg-transparent text-[#888]"
+                placeholder="0"
+              />
+              <select
+                value={toCur}
+                onChange={(e) => setToCur(e.target.value)}
+                className="field w-28 flex-shrink-0"
+              >
+                {ALL_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
-
-            {unitRate !== null && !fetching && (
-              <p className="text-xs text-[#555] text-center">1 {from} = {fmtResult(unitRate, to)} {to}</p>
-            )}
           </div>
+
+          {/* Rate line */}
+          <p className="text-[10px] text-[#444] mt-3 tabular-nums">
+            {amount > 0 && result > 0
+              ? `1 ${fromCur} = ${fmtResult(result / amount)} ${toCur}`
+              : wsStatus !== "live"
+              ? "Connecting to live data…"
+              : "Enter an amount to convert"}
+          </p>
         </div>
 
-        {rates && (
-          <div className="card overflow-hidden hover:border-[#444]">
-            <div className="px-5 py-3 border-b border-[#222]">
-              <p className="text-xs font-mono uppercase tracking-widest text-[#666]">Crypto Prices (USD)</p>
+        {/* Fiat rates strip */}
+        {Object.keys(fiatRates).length > 0 && (
+          <div className="card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-mono uppercase tracking-widest text-[#555]">Fiat Rates (per USD)</p>
+              {fiatAge !== null && (
+                <p className="text-[10px] text-[#333] font-mono">
+                  {fiatAge < 60 ? "just now" : `${Math.floor(fiatAge / 60)}m ago`}
+                </p>
+              )}
             </div>
-            <ul>
-              {CRYPTO.map((c, i) => {
-                const price = rates[c.code];
-                return (
-                  <li
-                    key={c.code}
-                    className={`px-5 py-3.5 flex items-center justify-between hover:bg-white/[0.02] transition-colors duration-150 cursor-pointer ${i > 0 ? "border-t border-[#1a1a1a]" : ""}`}
-                    onClick={() => { setFrom(c.code); setTo("USD"); }}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-sm font-semibold text-white w-14">{c.code}</span>
-                      <span className="text-xs text-[#555]">{c.name}</span>
-                    </div>
-                    <span className="text-sm font-semibold tabular-nums text-[#50e3c2]">
-                      ${price ? fmtPrice(price) : "—"}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              {FIAT_CODES.filter((c) => fiatRates[c]).map((c) => (
+                <div key={c} className="flex flex-col">
+                  <span className="text-[9px] font-mono text-[#444] uppercase">{c}</span>
+                  <span className="text-xs font-mono text-[#888] tabular-nums">
+                    {fiatRates[c].toLocaleString("en-US", { maximumFractionDigits: 4, minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
-        {rates && (
-          <div className="card overflow-hidden hover:border-[#444]">
-            <div className="px-5 py-3 border-b border-[#222]">
-              <p className="text-xs font-mono uppercase tracking-widest text-[#666]">Fiat Rates (per 1 USD)</p>
-            </div>
-            <div className="grid grid-cols-2">
-              {FIAT.filter((f) => f.code !== "USD").map((f, i) => {
-                const perUsd = rates[f.code] ? 1 / rates[f.code] : null;
-                return (
-                  <div
-                    key={f.code}
-                    className={`px-5 py-3 flex items-center justify-between hover:bg-white/[0.02] transition-colors duration-150 cursor-pointer
-                      ${i % 2 === 1 ? "border-l border-[#1a1a1a]" : ""}
-                      ${i >= 2    ? "border-t border-[#1a1a1a]" : ""}
-                    `}
-                    onClick={() => { setFrom("USD"); setTo(f.code); }}
-                  >
-                    <span className="text-sm text-[#888]">{f.code}</span>
-                    <span className="text-sm font-semibold tabular-nums text-white">
-                      {perUsd ? perUsd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : "—"}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
     </main>
   );
