@@ -42,6 +42,26 @@ export async function GET(req: NextRequest) {
     await supabase.from("salary_data").delete().eq("user_id", session.userId).eq("month_key", testKey);
   }
 
+  // 4. Fetch the actual rows so we can see what's stored
+  const { data: rows } = await supabase
+    .from("salary_data")
+    .select("month_key, salary, categories")
+    .eq("user_id", session.userId)
+    .order("month_key", { ascending: true });
+
+  const rowSummary = (rows ?? []).map((r) => {
+    const raw = r.categories;
+    const isLegacy = Array.isArray(raw);
+    const items = isLegacy ? raw : (raw?.items ?? []);
+    const extras = isLegacy ? [] : (raw?.extras ?? []);
+    return {
+      month_key: r.month_key,
+      salary: Number(r.salary),
+      categories: items.length,
+      extras: extras.length,
+    };
+  });
+
   return NextResponse.json({
     userId: session.userId,
     username: session.username,
@@ -51,5 +71,6 @@ export async function GET(req: NextRequest) {
     savedRowCountError: countErr?.message ?? null,
     writeTest: writeErr ? `FAILED: ${writeErr.message}` : "OK",
     writeVerified,
+    rows: rowSummary,
   });
 }

@@ -437,6 +437,19 @@ export default function ReportsManager({ refreshTrigger = 0 }: { refreshTrigger?
                 <DiagRow label="Write test" value={diagResult.writeTest} highlight={diagResult.writeTest === "OK"} />
                 <DiagRow label="Write verified" value={diagResult.writeVerified} />
                 {typeof diagResult.error === "string" && <p className="text-[10px] text-[#ff4444]">{diagResult.error}</p>}
+                {Array.isArray(diagResult.rows) && diagResult.rows.length > 0 && (
+                  <div className="mt-2 border-t border-[#1a1a1a] pt-2 flex flex-col gap-1">
+                    <p className="text-[9px] font-mono uppercase tracking-widest text-[#333] mb-1">rows in database</p>
+                    {(diagResult.rows as { month_key: string; salary: number; categories: number; extras: number }[]).map((r) => (
+                      <div key={r.month_key} className="flex justify-between text-[10px] font-mono">
+                        <span className="text-[#444]">{r.month_key}</span>
+                        <span className="text-[#555]">
+                          salary={r.salary} cats={r.categories} extras={r.extras}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
