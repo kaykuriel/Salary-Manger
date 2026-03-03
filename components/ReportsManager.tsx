@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 type Category = { id: string; name: string; amount: number; color: string };
 type Extra = { id: string; name: string; amount: number };
@@ -233,30 +233,41 @@ export default function ReportsManager() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [debug, setDebug] = useState<Record<string, unknown> | null>(null);
+  const hasRetriedRef = useRef(false);
 
-  function loadReports() {
+  const loadReports = useCallback(() => {
     setLoading(true);
     setError("");
     fetch("/api/reports")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((d) => { setMonths(d.months ?? []); setDebug(d._debug ?? null); setLoading(false); })
       .catch(() => { setError("Failed to load reports."); setLoading(false); });
-  }
+  }, []);
 
+  // Initial load: 500ms head-start so an in-flight Dashboard PUT has time to land first.
   useEffect(() => {
-    // 1000ms delay on mount so any in-flight Dashboard save (800ms debounce + network)
-    // has time to be written to the DB before we read.
-    const initialTimer = setTimeout(loadReports, 1000);
+    const initialTimer = setTimeout(loadReports, 500);
     function onVisible() {
-      if (document.visibilityState === "visible") loadReports();
+      if (document.visibilityState === "visible") {
+        hasRetriedRef.current = false;
+        loadReports();
+      }
     }
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       clearTimeout(initialTimer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadReports]);
+
+  // Auto-retry once after 2s if the initial fetch came back empty.
+  // Covers slow saves (Vercel cold start + Supabase latency > 500ms).
+  useEffect(() => {
+    if (loading || error || months.length > 0 || hasRetriedRef.current) return;
+    hasRetriedRef.current = true;
+    const t = setTimeout(loadReports, 2000);
+    return () => clearTimeout(t);
+  }, [loading, error, months, loadReports]);
 
   async function deleteMonth(monthKey: string) {
     setDeleting(monthKey);
@@ -360,11 +371,21 @@ export default function ReportsManager() {
         </div>
 
         {months.length === 0 ? (
-          <div className="card p-8 text-center flex flex-col gap-2">
+          <div className="card p-8 text-center flex flex-col items-center gap-3">
             <p className="text-[#555] text-sm">No data recorded yet.</p>
-            <p className="text-[#444] text-xs">Add salary data in the Dashboard to see reports.</p>
+            <p className="text-[#444] text-xs">Add salary and expenses in the Dashboard, then come back here.</p>
+            {!hasRetriedRef.current ? (
+              <p className="text-[10px] text-[#333] font-mono">syncing with dashboard…</p>
+            ) : (
+              <button
+                onClick={() => { hasRetriedRef.current = false; loadReports(); }}
+                className="btn-ghost border border-[#333] text-xs px-3 py-1.5 mt-1"
+              >
+                ↻ Refresh
+              </button>
+            )}
             {debug && (
-              <pre className="text-left text-[10px] text-[#444] bg-[#0a0a0a] rounded p-3 mt-2 overflow-x-auto">
+              <pre className="text-left text-[10px] text-[#333] bg-[#0a0a0a] rounded p-3 mt-1 overflow-x-auto w-full">
                 {JSON.stringify(debug, null, 2)}
               </pre>
             )}
