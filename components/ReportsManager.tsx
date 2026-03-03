@@ -256,7 +256,15 @@ export default function ReportsManager({ refreshTrigger = 0 }: { refreshTrigger?
     setDiagResult(null);
     fetch("/api/debug")
       .then((r) => r.json())
-      .then((d) => { setDiagResult(d); setDiagLoading(false); })
+      .then((d) => {
+        setDiagResult(d);
+        setDiagLoading(false);
+        // If the DB has rows, the cached state is stale — refresh immediately.
+        if ((d.savedRowCount ?? 0) > 0) {
+          hasRetriedRef.current = false;
+          loadReports();
+        }
+      })
       .catch(() => { setDiagResult({ error: "Could not reach /api/debug" }); setDiagLoading(false); });
   }
 
@@ -269,9 +277,10 @@ export default function ReportsManager({ refreshTrigger = 0 }: { refreshTrigger?
       .catch(() => { setError("Failed to load reports."); setLoading(false); });
   }, []);
 
-  // Initial load: 500ms head-start so an in-flight Dashboard PUT has time to land first.
+  // Initial load: fire immediately (data is already in DB for returning users).
+  // The auto-retry below handles the edge case of an in-flight save on first open.
   useEffect(() => {
-    const initialTimer = setTimeout(loadReports, 500);
+    loadReports();
     function onVisible() {
       if (document.visibilityState === "visible") {
         hasRetriedRef.current = false;
@@ -280,7 +289,6 @@ export default function ReportsManager({ refreshTrigger = 0 }: { refreshTrigger?
     }
     document.addEventListener("visibilitychange", onVisible);
     return () => {
-      clearTimeout(initialTimer);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [loadReports]);
