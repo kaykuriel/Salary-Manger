@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 
-// ─── Config ─────────────────────────────────────────────────────────────────
+// ─── Config ──────────────────────────────────────────────────────────────────
 
 const PAIRS = [
   { symbol: "BTCUSDT",  name: "Bitcoin",    short: "BTC"  },
@@ -17,10 +17,11 @@ const PAIRS = [
   { symbol: "LINKUSDT", name: "Chainlink",  short: "LINK" },
 ];
 
-const FIAT_CODES = ["EUR", "BRL", "GBP", "JPY", "CAD", "CHF", "AUD", "ARS", "MXN", "CNY"];
+const FIAT_CODES = ["BRL", "EUR", "GBP", "JPY", "CAD", "CHF", "AUD", "ARS", "MXN", "CNY"];
 
+// Port 443 works through most firewalls; 9443 is often blocked
 const WS_URL =
-  "wss://stream.binance.com:9443/stream?streams=" +
+  "wss://stream.binance.com:443/stream?streams=" +
   PAIRS.map((p) => `${p.symbol.toLowerCase()}@ticker`).join("/");
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -36,53 +37,114 @@ type Ticker = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// Handles BR format ("1.500,75") and US format ("1,500.75") correctly
+function parseAmount(s: string): number {
+  const t = s.trim();
+  if (!t) return 0;
+  const lastComma = t.lastIndexOf(",");
+  const lastDot = t.lastIndexOf(".");
+  if (lastComma > lastDot) {
+    // BR: comma is decimal separator
+    return parseFloat(t.replace(/\./g, "").replace(",", ".")) || 0;
+  }
+  // US: dot is decimal separator
+  return parseFloat(t.replace(/,/g, "")) || 0;
+}
+
 function fmtPrice(v: number): string {
-  if (v >= 10000) return v.toLocaleString("en-US", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
-  if (v >= 1)     return v.toLocaleString("en-US", { maximumFractionDigits: 4, minimumFractionDigits: 2 });
-  return v.toLocaleString("en-US", { maximumFractionDigits: 6, minimumFractionDigits: 4 });
+  if (v >= 10000)
+    return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (v >= 1)
+    return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  return v.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 6 });
 }
 
 function fmtVol(v: number): string {
-  if (v >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(1)}B`;
-  if (v >= 1_000_000)     return `$${(v / 1_000_000).toFixed(1)}M`;
-  return `$${(v / 1_000).toFixed(1)}K`;
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(2)}M`;
+  return `$${(v / 1e3).toFixed(1)}K`;
 }
 
 function fmtResult(v: number): string {
   if (v === 0) return "0";
-  if (v >= 1)  return v.toLocaleString("en-US", { maximumFractionDigits: 6 });
+  if (v >= 1e6) return v.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  if (v >= 1) return v.toLocaleString("en-US", { maximumFractionDigits: 6 });
   return v.toFixed(10).replace(/\.?0+$/, "");
 }
 
-// ─── Main component ──────────────────────────────────────────────────────────
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function CurrencyConverter() {
   const [tickers, setTickers] = useState<Record<string, Ticker>>({});
-  const [fiatRates, setFiatRates] = useState<Record<string, number>>({}); // X per 1 USD
+  const [fiatRates, setFiatRates] = useState<Record<string, number>>({});
   const [wsStatus, setWsStatus] = useState<"connecting" | "live" | "error">("connecting");
-  const [fiatAge, setFiatAge] = useState<number | null>(null); // seconds since last fiat fetch
+  const [fiatAge, setFiatAge] = useState<number | null>(null);
 
   const [fromAmt, setFromAmt] = useState("1");
   const [fromCur, setFromCur] = useState("BTC");
-  const [toCur, setToCur] = useState("USDT");
+  const [toCur, setToCur] = useState("BRL");
 
   const wsRef = useRef<WebSocket | null>(null);
   const flashTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fiatTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const fiatAgeTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const restPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
   const fiatFetchedAt = useRef<number | null>(null);
+  const wsLiveRef = useRef(false);
+
+  // ── REST prices (immediate warm-up + fallback when WS is down) ─────────────
+
+  const fetchRestPrices = useCallback(async () => {
+    try {
+      const symbols = encodeURIComponent(JSON.stringify(PAIRS.map((p) => p.symbol)));
+      const r = await fetch(
+        `https://api.binance.com/api/v3/ticker/24hr?symbols=${symbols}`
+      );
+      if (!r.ok || !mountedRef.current) return;
+      const arr: Array<Record<string, string>> = await r.json();
+      setTickers((prev) => {
+        const next = { ...prev };
+        for (const d of arr) {
+          // Only fill in if WS hasn't provided fresh data for this symbol
+          if (!next[d.symbol]) {
+            next[d.symbol] = {
+              price: parseFloat(d.lastPrice),
+              changePct: parseFloat(d.priceChangePercent),
+              high: parseFloat(d.highPrice),
+              low: parseFloat(d.lowPrice),
+              volUsdt: parseFloat(d.quoteVolume),
+              flash: null,
+            };
+          }
+        }
+        return next;
+      });
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   // ── WebSocket ──────────────────────────────────────────────────────────────
 
   const connect = useCallback(() => {
     if (!mountedRef.current) return;
     setWsStatus("connecting");
+    wsLiveRef.current = false;
     const ws = new WebSocket(WS_URL);
     wsRef.current = ws;
 
-    ws.onopen = () => { if (mountedRef.current) setWsStatus("live"); };
+    ws.onopen = () => {
+      if (!mountedRef.current) return;
+      setWsStatus("live");
+      wsLiveRef.current = true;
+      // Stop REST polling now that WS is live
+      if (restPollTimer.current) {
+        clearInterval(restPollTimer.current);
+        restPollTimer.current = null;
+      }
+    };
 
     ws.onmessage = (evt) => {
       if (!mountedRef.current) return;
@@ -96,14 +158,20 @@ export default function CurrencyConverter() {
         setTickers((prev) => {
           const old = prev[sym];
           const flash: Ticker["flash"] = old
-            ? newPrice > old.price ? "up" : newPrice < old.price ? "down" : null
+            ? newPrice > old.price
+              ? "up"
+              : newPrice < old.price
+              ? "down"
+              : null
             : null;
 
           if (flash) {
             if (flashTimers.current[sym]) clearTimeout(flashTimers.current[sym]);
             flashTimers.current[sym] = setTimeout(() => {
               if (!mountedRef.current) return;
-              setTickers((p) => p[sym] ? { ...p, [sym]: { ...p[sym], flash: null } } : p);
+              setTickers((p) =>
+                p[sym] ? { ...p, [sym]: { ...p[sym], flash: null } } : p
+              );
             }, 600);
           }
 
@@ -119,15 +187,23 @@ export default function CurrencyConverter() {
             },
           };
         });
-      } catch { /* ignore malformed */ }
+      } catch {
+        /* ignore malformed */
+      }
     };
 
-    ws.onerror = () => { if (mountedRef.current) setWsStatus("error"); };
+    ws.onerror = () => {
+      if (mountedRef.current) {
+        setWsStatus("error");
+        wsLiveRef.current = false;
+      }
+    };
 
     ws.onclose = () => {
       if (!mountedRef.current) return;
       setWsStatus("connecting");
-      reconnectTimer.current = setTimeout(connect, 3000);
+      wsLiveRef.current = false;
+      reconnectTimer.current = setTimeout(connect, 5000);
     };
   }, []);
 
@@ -138,29 +214,37 @@ export default function CurrencyConverter() {
       const r = await fetch(
         `https://api.frankfurter.app/latest?from=USD&to=${FIAT_CODES.join(",")}`
       );
-      if (!r.ok) return;
+      if (!r.ok || !mountedRef.current) return;
       const json = await r.json();
-      if (mountedRef.current) {
-        setFiatRates(json.rates ?? {});
-        fiatFetchedAt.current = Date.now();
-        setFiatAge(0);
-      }
-    } catch { /* network error, ignore */ }
+      setFiatRates(json.rates ?? {});
+      fiatFetchedAt.current = Date.now();
+      setFiatAge(0);
+    } catch {
+      /* ignore */
+    }
   }, []);
 
-  // ── Mount / unmount ────────────────────────────────────────────────────────
+  // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
     mountedRef.current = true;
+
+    // Fetch REST prices immediately so converter works right away
+    fetchRestPrices();
+    // Start WS for real-time updates
     connect();
     fetchFiat();
 
     fiatTimer.current = setInterval(fetchFiat, 60_000);
     fiatAgeTimer.current = setInterval(() => {
-      if (fiatFetchedAt.current) {
+      if (fiatFetchedAt.current)
         setFiatAge(Math.floor((Date.now() - fiatFetchedAt.current) / 1000));
-      }
-    }, 5000);
+    }, 5_000);
+
+    // REST fallback every 15s when WS is blocked/down
+    restPollTimer.current = setInterval(() => {
+      if (!wsLiveRef.current) fetchRestPrices();
+    }, 15_000);
 
     return () => {
       mountedRef.current = false;
@@ -168,9 +252,10 @@ export default function CurrencyConverter() {
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
       if (fiatTimer.current) clearInterval(fiatTimer.current);
       if (fiatAgeTimer.current) clearInterval(fiatAgeTimer.current);
+      if (restPollTimer.current) clearInterval(restPollTimer.current);
       Object.values(flashTimers.current).forEach(clearTimeout);
     };
-  }, [connect, fetchFiat]);
+  }, [connect, fetchFiat, fetchRestPrices]);
 
   // ── Converter logic ────────────────────────────────────────────────────────
 
@@ -178,30 +263,35 @@ export default function CurrencyConverter() {
     if (cur === "USDT" || cur === "USD") return amount;
     const pair = PAIRS.find((p) => p.short === cur);
     if (pair) return amount * (tickers[pair.symbol]?.price ?? 0);
-    // fiat: 1 USD = fiatRates[cur] units, so 1 unit = 1/fiatRates[cur] USD
     return fiatRates[cur] ? amount / fiatRates[cur] : 0;
   }
 
   function fromUsd(cur: string, usd: number): number {
     if (cur === "USDT" || cur === "USD") return usd;
     const pair = PAIRS.find((p) => p.short === cur);
-    if (pair) return tickers[pair.symbol]?.price ? usd / tickers[pair.symbol].price : 0;
+    if (pair) {
+      const p = tickers[pair.symbol]?.price;
+      return p ? usd / p : 0;
+    }
     return fiatRates[cur] ? usd * fiatRates[cur] : 0;
   }
 
-  const amount = parseFloat(fromAmt.replace(/,/g, "")) || 0;
+  function hasData(cur: string): boolean {
+    if (cur === "USDT" || cur === "USD") return true;
+    const pair = PAIRS.find((p) => p.short === cur);
+    if (pair) return !!(tickers[pair.symbol]?.price);
+    return !!fiatRates[cur];
+  }
+
+  const amount = parseAmount(fromAmt);
+  const canConvert = hasData(fromCur) && hasData(toCur);
   const resultUsd = toUsd(fromCur, amount);
   const result = fromUsd(toCur, resultUsd);
+  const ratePerUnit = fromUsd(toCur, toUsd(fromCur, 1));
 
-  // All available currencies for converter selects
-  const ALL_CURRENCIES = [
-    "USDT",
-    ...PAIRS.map((p) => p.short),
-    "USD",
-    ...FIAT_CODES,
-  ];
+  const ALL_CURRENCIES = ["USDT", ...PAIRS.map((p) => p.short), "USD", ...FIAT_CODES];
 
-  // ── UI ─────────────────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <main className="py-8 px-4">
@@ -212,36 +302,143 @@ export default function CurrencyConverter() {
           <h1 className="text-base font-semibold text-white tracking-tight">Market</h1>
           <div className="flex items-center gap-1.5">
             <span
-              className={`w-1.5 h-1.5 rounded-full ${
-                wsStatus === "live" ? "bg-[#50e3c2]" : wsStatus === "error" ? "bg-[#ff4444]" : "bg-[#f5a623]"
+              className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                wsStatus === "live"
+                  ? "bg-[#50e3c2]"
+                  : wsStatus === "error"
+                  ? "bg-[#ff4444]"
+                  : "bg-[#f5a623]"
               }`}
               style={wsStatus === "live" ? { animation: "pulse 2s infinite" } : undefined}
             />
             <span className="text-[10px] font-mono text-[#555]">
-              {wsStatus === "live" ? "LIVE" : wsStatus === "error" ? "ERROR" : "CONNECTING…"}
+              {wsStatus === "live"
+                ? "LIVE"
+                : wsStatus === "error"
+                ? "RECONNECTING"
+                : "CONNECTING…"}
             </span>
           </div>
         </div>
 
-        {/* Ticker table */}
+        {/* ── Converter — at top for quick access ────────────────────────── */}
+        <div className="card p-5">
+          <p className="text-xs font-mono uppercase tracking-widest text-[#555] mb-4">
+            Converter
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {/* From */}
+            <div className="flex gap-2 flex-1 min-w-0">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={fromAmt}
+                onChange={(e) => setFromAmt(e.target.value)}
+                className="field flex-1 text-right tabular-nums font-mono min-w-0"
+                placeholder="0"
+              />
+              <select
+                value={fromCur}
+                onChange={(e) => setFromCur(e.target.value)}
+                className="field w-24 flex-shrink-0"
+              >
+                {ALL_CURRENCIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Swap */}
+            <button
+              onClick={() => {
+                setFromCur(toCur);
+                setToCur(fromCur);
+              }}
+              className="btn-ghost border border-[#333] px-3 py-2 text-base self-center flex-shrink-0 hover:border-[#555] transition-colors"
+              title="Swap currencies"
+            >
+              ⇄
+            </button>
+
+            {/* To — read-only result */}
+            <div className="flex gap-2 flex-1 min-w-0">
+              <div className="field flex-1 flex items-center justify-end font-mono min-w-0">
+                {amount > 0 ? (
+                  !canConvert ? (
+                    <span className="text-[#555] text-xs">loading…</span>
+                  ) : result > 0 ? (
+                    <span className="tabular-nums text-white">{fmtResult(result)}</span>
+                  ) : (
+                    <span className="text-[#444]">—</span>
+                  )
+                ) : (
+                  <span className="text-[#444]">—</span>
+                )}
+              </div>
+              <select
+                value={toCur}
+                onChange={(e) => setToCur(e.target.value)}
+                className="field w-24 flex-shrink-0"
+              >
+                {ALL_CURRENCIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Rate line */}
+          <p className="text-[10px] font-mono text-[#444] mt-3 tabular-nums min-h-[14px]">
+            {canConvert && ratePerUnit > 0
+              ? `1 ${fromCur} = ${fmtResult(ratePerUnit)} ${toCur}`
+              : !canConvert && amount > 0
+              ? "Waiting for price data…"
+              : ""}
+          </p>
+        </div>
+
+        {/* ── Ticker table ───────────────────────────────────────────────── */}
         <div className="card overflow-hidden">
+          <div className="px-4 py-2 border-b border-[#111]">
+            <p className="text-[9px] font-mono uppercase tracking-widest text-[#333]">
+              Click a row to use in converter
+            </p>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[#1a1a1a] text-[#444]">
-                  <th className="text-left px-4 py-2.5 font-mono tracking-widest font-normal">PAIR</th>
-                  <th className="text-right px-3 py-2.5 font-mono tracking-widest font-normal">PRICE</th>
-                  <th className="text-right px-3 py-2.5 font-mono tracking-widest font-normal">24H %</th>
-                  <th className="text-right px-3 py-2.5 font-mono tracking-widest font-normal hidden sm:table-cell">HIGH</th>
-                  <th className="text-right px-3 py-2.5 font-mono tracking-widest font-normal hidden sm:table-cell">LOW</th>
-                  <th className="text-right px-4 py-2.5 font-mono tracking-widest font-normal hidden md:table-cell">VOL</th>
+                <tr className="border-b border-[#1a1a1a]">
+                  <th className="text-left px-4 py-2 text-[#444] font-mono tracking-widest font-normal">
+                    PAIR
+                  </th>
+                  <th className="text-right px-3 py-2 text-[#444] font-mono tracking-widest font-normal">
+                    PRICE
+                  </th>
+                  <th className="text-right px-3 py-2 text-[#444] font-mono tracking-widest font-normal">
+                    24H %
+                  </th>
+                  <th className="text-right px-3 py-2 text-[#444] font-mono tracking-widest font-normal hidden sm:table-cell">
+                    HIGH
+                  </th>
+                  <th className="text-right px-3 py-2 text-[#444] font-mono tracking-widest font-normal hidden sm:table-cell">
+                    LOW
+                  </th>
+                  <th className="text-right px-4 py-2 text-[#444] font-mono tracking-widest font-normal hidden md:table-cell">
+                    VOL
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {PAIRS.map((pair) => {
                   const t = tickers[pair.symbol];
                   const up = (t?.changePct ?? 0) >= 0;
-                  const flashColor =
+                  const isSelected = fromCur === pair.short;
+                  const flashBg =
                     t?.flash === "up"
                       ? "bg-[#50e3c2]/10"
                       : t?.flash === "down"
@@ -250,20 +447,34 @@ export default function CurrencyConverter() {
                   return (
                     <tr
                       key={pair.symbol}
-                      className={`border-b border-[#0d0d0d] transition-colors duration-300 ${flashColor}`}
+                      onClick={() => setFromCur(pair.short)}
+                      className={`border-b border-[#0d0d0d] cursor-pointer transition-colors duration-300
+                        hover:bg-white/[0.03] ${isSelected ? "bg-white/[0.05]" : ""} ${flashBg}`}
                     >
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-2">
+                          {isSelected && (
+                            <span className="w-1 h-1 rounded-full bg-[#cc0000] flex-shrink-0" />
+                          )}
                           <span className="font-semibold text-white">{pair.short}</span>
-                          <span className="text-[#444] hidden sm:inline">/USDT</span>
+                          <span className="text-[#333] hidden sm:inline">/USDT</span>
                         </div>
-                        <p className="text-[10px] text-[#444] hidden sm:block">{pair.name}</p>
+                        <p className="text-[9px] text-[#444] hidden sm:block mt-0.5">
+                          {pair.name}
+                        </p>
                       </td>
                       <td className="px-3 py-2.5 text-right tabular-nums">
                         {t ? (
                           <span
-                            className="font-mono text-white font-medium transition-colors duration-300"
-                            style={{ color: t.flash === "up" ? "#50e3c2" : t.flash === "down" ? "#ff4444" : "white" }}
+                            className="font-mono font-medium transition-colors duration-300"
+                            style={{
+                              color:
+                                t.flash === "up"
+                                  ? "#50e3c2"
+                                  : t.flash === "down"
+                                  ? "#ff4444"
+                                  : "white",
+                            }}
                           >
                             ${fmtPrice(t.price)}
                           </span>
@@ -273,8 +484,13 @@ export default function CurrencyConverter() {
                       </td>
                       <td className="px-3 py-2.5 text-right tabular-nums">
                         {t ? (
-                          <span className={`font-mono font-medium ${up ? "text-[#50e3c2]" : "text-[#ff4444]"}`}>
-                            {up ? "+" : ""}{t.changePct.toFixed(2)}%
+                          <span
+                            className={`font-mono font-medium ${
+                              up ? "text-[#50e3c2]" : "text-[#ff4444]"
+                            }`}
+                          >
+                            {up ? "+" : ""}
+                            {t.changePct.toFixed(2)}%
                           </span>
                         ) : (
                           <span className="text-[#333]">—</span>
@@ -297,90 +513,49 @@ export default function CurrencyConverter() {
           </div>
         </div>
 
-        {/* Converter */}
-        <div className="card p-5">
-          <p className="text-xs font-mono uppercase tracking-widest text-[#555] mb-4">Converter</p>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            {/* From */}
-            <div className="flex gap-2 flex-1">
-              <input
-                type="text"
-                value={fromAmt}
-                onChange={(e) => setFromAmt(e.target.value)}
-                className="field flex-1 text-right tabular-nums font-mono"
-                placeholder="0"
-              />
-              <select
-                value={fromCur}
-                onChange={(e) => setFromCur(e.target.value)}
-                className="field w-28 flex-shrink-0"
-              >
-                {ALL_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-
-            {/* Swap */}
-            <button
-              onClick={() => { setFromCur(toCur); setToCur(fromCur); }}
-              className="btn-ghost border border-[#333] px-3 py-2 text-base self-center flex-shrink-0 hover:border-[#555] transition-colors"
-              title="Swap currencies"
-            >
-              ⇄
-            </button>
-
-            {/* To */}
-            <div className="flex gap-2 flex-1">
-              <input
-                type="text"
-                value={fmtResult(result)}
-                readOnly
-                className="field flex-1 text-right tabular-nums font-mono bg-transparent text-[#888]"
-                placeholder="0"
-              />
-              <select
-                value={toCur}
-                onChange={(e) => setToCur(e.target.value)}
-                className="field w-28 flex-shrink-0"
-              >
-                {ALL_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Rate line */}
-          <p className="text-[10px] text-[#444] mt-3 tabular-nums">
-            {amount > 0 && result > 0
-              ? `1 ${fromCur} = ${fmtResult(result / amount)} ${toCur}`
-              : wsStatus !== "live"
-              ? "Connecting to live data…"
-              : "Enter an amount to convert"}
-          </p>
-        </div>
-
-        {/* Fiat rates strip */}
+        {/* ── Fiat rates ─────────────────────────────────────────────────── */}
         {Object.keys(fiatRates).length > 0 && (
           <div className="card p-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-mono uppercase tracking-widest text-[#555]">Fiat Rates (per USD)</p>
-              {fiatAge !== null && (
-                <p className="text-[10px] text-[#333] font-mono">
-                  {fiatAge < 60 ? "just now" : `${Math.floor(fiatAge / 60)}m ago`}
-                </p>
-              )}
+              <p className="text-[10px] font-mono uppercase tracking-widest text-[#555]">
+                Fiat (per 1 USD)
+              </p>
+              <button
+                onClick={fetchFiat}
+                className="text-[10px] text-[#333] font-mono hover:text-[#666] transition-colors"
+                title="Refresh fiat rates"
+              >
+                {fiatAge !== null
+                  ? fiatAge < 60
+                    ? "just now"
+                    : `${Math.floor(fiatAge / 60)}m ago`
+                  : ""}{" "}
+                ↻
+              </button>
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
               {FIAT_CODES.filter((c) => fiatRates[c]).map((c) => (
-                <div key={c} className="flex flex-col">
-                  <span className="text-[9px] font-mono text-[#444] uppercase">{c}</span>
-                  <span className="text-xs font-mono text-[#888] tabular-nums">
-                    {fiatRates[c].toLocaleString("en-US", { maximumFractionDigits: 4, minimumFractionDigits: 2 })}
+                <button
+                  key={c}
+                  onClick={() => setToCur(c)}
+                  className={`flex flex-col text-left rounded-lg px-2 py-1.5 transition-colors hover:bg-white/[0.04] ${
+                    toCur === c ? "bg-white/[0.07] ring-1 ring-white/10" : ""
+                  }`}
+                >
+                  <span className="text-[9px] font-mono text-[#444] uppercase tracking-wide">
+                    {c}
                   </span>
-                </div>
+                  <span className="text-xs font-mono text-[#888] tabular-nums">
+                    {fiatRates[c].toLocaleString("en-US", {
+                      maximumFractionDigits: 4,
+                      minimumFractionDigits: 2,
+                    })}
+                  </span>
+                </button>
               ))}
             </div>
           </div>
         )}
-
       </div>
     </main>
   );
