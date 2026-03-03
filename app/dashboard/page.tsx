@@ -12,8 +12,10 @@ export default function DashboardPage() {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
   const [activeTab, setActiveTab] = useState<"dashboard" | "reports">("dashboard");
-  // Starts at 0 (not yet mounted). Each increment remounts ReportsManager → fresh fetch.
-  const [reportKey, setReportKey] = useState(0);
+  // 0 = not yet mounted; 1 = mounted (never remounts after first open)
+  const [reportMounted, setReportMounted] = useState(0);
+  // Increments every time a save is confirmed → tells ReportsManager to refresh
+  const [savedTick, setSavedTick] = useState(0);
 
   useEffect(() => {
     getSession().then((s) => {
@@ -23,7 +25,7 @@ export default function DashboardPage() {
   }, [router]);
 
   function openReports() {
-    setReportKey((k) => k + 1);
+    setReportMounted((m) => (m === 0 ? 1 : m)); // mount once, never remount
     setActiveTab("reports");
   }
 
@@ -60,13 +62,16 @@ export default function DashboardPage() {
 
       {/* Dashboard panel — always mounted so saves keep working */}
       <div className={activeTab === "dashboard" ? "" : "hidden"}>
-        <SalaryManager userId={session.userId} />
+        <SalaryManager
+          userId={session.userId}
+          onSaved={() => setSavedTick((t) => t + 1)}
+        />
       </div>
 
-      {/* Reports panel — lazy-mounted on first visit, remounted on each visit */}
-      {reportKey > 0 && (
+      {/* Reports panel — lazy-mounted on first visit, never remounted */}
+      {reportMounted > 0 && (
         <div className={activeTab === "reports" ? "" : "hidden"}>
-          <ReportsManager key={reportKey} />
+          <ReportsManager refreshTrigger={savedTick} />
         </div>
       )}
     </div>

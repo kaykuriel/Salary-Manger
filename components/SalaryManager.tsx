@@ -61,7 +61,7 @@ function parseMonthData(data: Record<string, unknown> | null): MonthData {
   };
 }
 
-export default function SalaryManager({ userId: _userId }: { userId: string }) {
+export default function SalaryManager({ userId: _userId, onSaved }: { userId: string; onSaved?: () => void }) {
   const [monthKey, setMonthKey] = useState(() => getMonthKey(new Date()));
   const [monthData, setMonthData] = useState<MonthData>(empty());
   const [hydrated, setHydrated] = useState(false);
@@ -164,6 +164,7 @@ export default function SalaryManager({ userId: _userId }: { userId: string }) {
         if (j?.ok) {
           setSaveStatus("ok");
           setTimeout(() => setSaveStatus("idle"), 2000);
+          onSaved?.();
         } else {
           setSaveStatus("fail");
           console.error("Save failed:", j);

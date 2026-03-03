@@ -226,7 +226,7 @@ async function exportExcel(months: MonthReport[]) {
 
 // ─── Reports Manager ───────────────────────────────────────────────────────────
 
-export default function ReportsManager() {
+export default function ReportsManager({ refreshTrigger = 0 }: { refreshTrigger?: number }) {
   const [months, setMonths] = useState<MonthReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -234,6 +234,7 @@ export default function ReportsManager() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [debug, setDebug] = useState<Record<string, unknown> | null>(null);
   const hasRetriedRef = useRef(false);
+  const isFirstRenderRef = useRef(true);
 
   const loadReports = useCallback(() => {
     setLoading(true);
@@ -268,6 +269,14 @@ export default function ReportsManager() {
     const t = setTimeout(loadReports, 2000);
     return () => clearTimeout(t);
   }, [loading, error, months, loadReports]);
+
+  // Background refresh when Dashboard confirms a save (refreshTrigger increments).
+  // Skip on mount — initial load above already handles that.
+  useEffect(() => {
+    if (isFirstRenderRef.current) { isFirstRenderRef.current = false; return; }
+    const t = setTimeout(loadReports, 300);
+    return () => clearTimeout(t);
+  }, [refreshTrigger, loadReports]);
 
   async function deleteMonth(monthKey: string) {
     setDeleting(monthKey);
