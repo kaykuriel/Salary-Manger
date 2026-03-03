@@ -5,26 +5,37 @@ import { useState, useEffect, useRef, useCallback } from "react";
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 const PAIRS = [
-  { symbol: "BTCUSDT",  name: "Bitcoin",    short: "BTC",  cg: "bitcoin"      },
-  { symbol: "ETHUSDT",  name: "Ethereum",   short: "ETH",  cg: "ethereum"     },
-  { symbol: "BNBUSDT",  name: "BNB",        short: "BNB",  cg: "binancecoin"  },
-  { symbol: "SOLUSDT",  name: "Solana",     short: "SOL",  cg: "solana"       },
-  { symbol: "XRPUSDT",  name: "XRP",        short: "XRP",  cg: "ripple"       },
-  { symbol: "ADAUSDT",  name: "Cardano",    short: "ADA",  cg: "cardano"      },
-  { symbol: "DOGEUSDT", name: "Dogecoin",   short: "DOGE", cg: "dogecoin"     },
-  { symbol: "AVAXUSDT", name: "Avalanche",  short: "AVAX", cg: "avalanche-2"  },
-  { symbol: "DOTUSDT",  name: "Polkadot",   short: "DOT",  cg: "polkadot"     },
-  { symbol: "LINKUSDT", name: "Chainlink",  short: "LINK", cg: "chainlink"    },
+  { symbol: "BTCUSDT",  name: "Bitcoin",    short: "BTC",  kraken: "XBT/USD",  cg: "bitcoin"      },
+  { symbol: "ETHUSDT",  name: "Ethereum",   short: "ETH",  kraken: "ETH/USD",  cg: "ethereum"     },
+  { symbol: "BNBUSDT",  name: "BNB",        short: "BNB",  kraken: null,       cg: "binancecoin"  },
+  { symbol: "SOLUSDT",  name: "Solana",     short: "SOL",  kraken: "SOL/USD",  cg: "solana"       },
+  { symbol: "XRPUSDT",  name: "XRP",        short: "XRP",  kraken: "XRP/USD",  cg: "ripple"       },
+  { symbol: "ADAUSDT",  name: "Cardano",    short: "ADA",  kraken: "ADA/USD",  cg: "cardano"      },
+  { symbol: "DOGEUSDT", name: "Dogecoin",   short: "DOGE", kraken: "XDG/USD",  cg: "dogecoin"     },
+  { symbol: "AVAXUSDT", name: "Avalanche",  short: "AVAX", kraken: "AVAX/USD", cg: "avalanche-2"  },
+  { symbol: "DOTUSDT",  name: "Polkadot",   short: "DOT",  kraken: "DOT/USD",  cg: "polkadot"     },
+  { symbol: "LINKUSDT", name: "Chainlink",  short: "LINK", kraken: "LINK/USD", cg: "chainlink"    },
 ];
 
-const CG_IDS = PAIRS.map((p) => p.cg).join(",");
-const CG_SYM: Record<string, string> = Object.fromEntries(PAIRS.map((p) => [p.cg, p.symbol]));
+const CG_IDS     = PAIRS.map((p) => p.cg).join(",");
+const CG_SYM_MAP = Object.fromEntries(PAIRS.map((p) => [p.cg, p.symbol]));
+const KR_SYM_MAP: Record<string, string> = {
+  "XBT/USD":  "BTCUSDT",
+  "ETH/USD":  "ETHUSDT",
+  "SOL/USD":  "SOLUSDT",
+  "XRP/USD":  "XRPUSDT",
+  "ADA/USD":  "ADAUSDT",
+  "XDG/USD":  "DOGEUSDT",
+  "DOGE/USD": "DOGEUSDT",
+  "AVAX/USD": "AVAXUSDT",
+  "DOT/USD":  "DOTUSDT",
+  "LINK/USD": "LINKUSDT",
+};
+const KRAKEN_PAIRS = PAIRS.filter((p) => p.kraken).map((p) => p.kraken!);
 
-const FIAT_CODES = ["BRL", "EUR", "GBP", "JPY", "CAD", "CHF", "AUD", "HKD", "MXN", "CNY"];
-
-const WS_URL =
-  "wss://stream.binance.com:443/stream?streams=" +
-  PAIRS.map((p) => `${p.symbol.toLowerCase()}@ticker`).join("/");
+const FIAT_CODES    = ["BRL", "EUR", "GBP", "JPY", "CAD", "CHF", "AUD", "HKD", "MXN", "CNY"];
+// awesomeapi.com.br — Brazilian market rates (same as Google for BRL)
+const AWESOME_PAIRS = FIAT_CODES.map((c) => `USD-${c}`).join(",");
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -36,7 +47,6 @@ type Ticker = {
   volUsdt: number;
   flash: "up" | "down" | null;
 };
-
 type DataMode = "connecting" | "live" | "polling" | "error";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -45,7 +55,7 @@ function parseAmount(s: string): number {
   const t = s.trim();
   if (!t) return 0;
   const lastComma = t.lastIndexOf(",");
-  const lastDot = t.lastIndexOf(".");
+  const lastDot   = t.lastIndexOf(".");
   if (lastComma > lastDot) return parseFloat(t.replace(/\./g, "").replace(",", ".")) || 0;
   return parseFloat(t.replace(/,/g, "")) || 0;
 }
@@ -63,116 +73,102 @@ function fmtVol(v: number): string {
 }
 
 function fmtResult(v: number): string {
-  if (v === 0) return "0";
-  if (v >= 1e6) return v.toLocaleString("en-US", { maximumFractionDigits: 2 });
-  if (v >= 1)   return v.toLocaleString("en-US", { maximumFractionDigits: 6 });
+  if (v === 0)   return "0";
+  if (v >= 1e6)  return v.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  if (v >= 1)    return v.toLocaleString("en-US", { maximumFractionDigits: 6 });
   return v.toFixed(10).replace(/\.?0+$/, "");
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function CurrencyConverter() {
-  const [tickers, setTickers]   = useState<Record<string, Ticker>>({});
+  const [tickers,   setTickers]   = useState<Record<string, Ticker>>({});
   const [fiatRates, setFiatRates] = useState<Record<string, number>>({});
-  const [dataMode, setDataMode] = useState<DataMode>("connecting");
-  const [fiatAge, setFiatAge]   = useState<number | null>(null);
+  const [dataMode,  setDataMode]  = useState<DataMode>("connecting");
+  const [fiatAge,   setFiatAge]   = useState<number | null>(null);
 
   const [fromAmt, setFromAmt] = useState("1");
   const [fromCur, setFromCur] = useState("BTC");
   const [toCur,   setToCur]   = useState("BRL");
 
-  const wsRef         = useRef<WebSocket | null>(null);
-  const flashTimers   = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const wsRef          = useRef<WebSocket | null>(null);
+  const flashTimers    = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fiatTimer     = useRef<ReturnType<typeof setInterval> | null>(null);
-  const fiatAgeTimer  = useRef<ReturnType<typeof setInterval> | null>(null);
-  const cryptoPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const mountedRef    = useRef(true);
-  const wsLiveRef     = useRef(false);
-  const fiatFetchedAt = useRef<number | null>(null);
+  const fiatTimer      = useRef<ReturnType<typeof setInterval> | null>(null);
+  const fiatAgeTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cgPollTimer    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mountedRef     = useRef(true);
+  const krakenLiveRef  = useRef(false);
+  const fiatFetchedAt  = useRef<number | null>(null);
 
-  // ── Crypto: try Binance REST, fallback to CoinGecko ───────────────────────
+  // ── Flash helper ──────────────────────────────────────────────────────────
 
-  const fetchCryptoPrices = useCallback(async () => {
-    if (wsLiveRef.current) return; // WS is live — no polling needed
+  function applyFlash(sym: string, newPrice: number, prev: Record<string, Ticker>): Ticker["flash"] {
+    const old = prev[sym];
+    if (!old) return null;
+    return newPrice > old.price ? "up" : newPrice < old.price ? "down" : null;
+  }
 
-    // 1. Try Binance REST
-    try {
-      const symbols = encodeURIComponent(JSON.stringify(PAIRS.map((p) => p.symbol)));
-      const r = await fetch(
-        `https://api.binance.com/api/v3/ticker/24hr?symbols=${symbols}`,
-        { signal: AbortSignal.timeout(6000) }
-      );
-      if (r.ok && mountedRef.current) {
-        const arr: Array<Record<string, string>> = await r.json();
-        if (Array.isArray(arr) && arr.length > 0) {
-          setTickers((prev) => {
-            const next = { ...prev };
-            for (const d of arr) {
-              next[d.symbol] = {
-                price: parseFloat(d.lastPrice),
-                changePct: parseFloat(d.priceChangePercent),
-                high: parseFloat(d.highPrice),
-                low: parseFloat(d.lowPrice),
-                volUsdt: parseFloat(d.quoteVolume),
-                flash: null,
-              };
-            }
-            return next;
-          });
-          if (mountedRef.current) setDataMode("polling");
-          return; // Success — no need for CoinGecko
-        }
-      }
-    } catch {
-      /* Binance blocked or timed out — fall through to CoinGecko */
-    }
+  function scheduleFlashClear(sym: string) {
+    if (flashTimers.current[sym]) clearTimeout(flashTimers.current[sym]);
+    flashTimers.current[sym] = setTimeout(() => {
+      if (!mountedRef.current) return;
+      setTickers((p) => p[sym] ? { ...p, [sym]: { ...p[sym], flash: null } } : p);
+    }, 600);
+  }
 
-    // 2. CoinGecko fallback (more accessible globally)
+  // ── CoinGecko: all pairs (used on mount + fallback + BNB always) ──────────
+
+  const fetchCoinGecko = useCallback(async () => {
     try {
       const r = await fetch(
-        `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${CG_IDS}` +
-        `&order=market_cap_desc&per_page=10&page=1&sparkline=false`,
+        `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${CG_IDS}&order=market_cap_desc&per_page=10&page=1&sparkline=false`,
         { signal: AbortSignal.timeout(10000) }
       );
       if (!r.ok || !mountedRef.current) return;
       const arr = await r.json();
-      if (!Array.isArray(arr)) return;
+      if (!Array.isArray(arr) || arr.length === 0) return;
+
       setTickers((prev) => {
         const next = { ...prev };
         for (const coin of arr) {
-          const sym = CG_SYM[coin.id];
+          const sym = CG_SYM_MAP[coin.id];
           if (!sym) continue;
+          // When Kraken WS is live, only update BNB (Kraken doesn't list BNB)
+          const pair = PAIRS.find((p) => p.symbol === sym);
+          if (krakenLiveRef.current && pair?.kraken !== null) continue;
           next[sym] = {
-            price:     coin.current_price       ?? 0,
+            price:     coin.current_price            ?? 0,
             changePct: coin.price_change_percentage_24h ?? 0,
-            high:      coin.high_24h            ?? 0,
-            low:       coin.low_24h             ?? 0,
-            volUsdt:   coin.total_volume        ?? 0,
+            high:      coin.high_24h                 ?? 0,
+            low:       coin.low_24h                  ?? 0,
+            volUsdt:   coin.total_volume             ?? 0,
             flash:     null,
           };
         }
         return next;
       });
-      if (mountedRef.current) setDataMode("polling");
-    } catch {
-      /* Both sources failed */
-      if (mountedRef.current) setDataMode("error");
-    }
+
+      if (mountedRef.current && !krakenLiveRef.current) setDataMode("polling");
+    } catch { /* ignore */ }
   }, []);
 
-  // ── Fiat: try Frankfurter, fallback to open.er-api.com ────────────────────
+  // ── Fiat: awesomeapi (Brazilian market rates) → open.er-api.com fallback ──
 
   const fetchFiat = useCallback(async () => {
-    // 1. Frankfurter (ECB data — no ARS, otherwise good)
+    // 1. awesomeapi.com.br — same source as Google for BRL
     try {
       const r = await fetch(
-        `https://api.frankfurter.app/latest?from=USD&to=${FIAT_CODES.join(",")}`,
-        { signal: AbortSignal.timeout(6000) }
+        `https://economia.awesomeapi.com.br/json/last/${AWESOME_PAIRS}`,
+        { signal: AbortSignal.timeout(8000) }
       );
       if (r.ok && mountedRef.current) {
         const json = await r.json();
-        const rates = json.rates ?? {};
+        const rates: Record<string, number> = {};
+        for (const code of FIAT_CODES) {
+          const val = json[`USD${code}`]?.bid;
+          if (val) rates[code] = parseFloat(val);
+        }
         if (Object.keys(rates).length > 0) {
           setFiatRates(rates);
           fiatFetchedAt.current = Date.now();
@@ -180,9 +176,7 @@ export default function CurrencyConverter() {
           return;
         }
       }
-    } catch {
-      /* Try fallback */
-    }
+    } catch { /* fallback */ }
 
     // 2. open.er-api.com fallback
     try {
@@ -196,82 +190,73 @@ export default function CurrencyConverter() {
       for (const code of FIAT_CODES) {
         if (json.rates[code]) rates[code] = json.rates[code];
       }
-      if (Object.keys(rates).length > 0 && mountedRef.current) {
+      if (Object.keys(rates).length > 0) {
         setFiatRates(rates);
         fiatFetchedAt.current = Date.now();
         setFiatAge(0);
       }
-    } catch {
-      /* Both fiat sources failed */
-    }
+    } catch { /* ignore */ }
   }, []);
 
-  // ── Binance WebSocket (real-time when accessible) ─────────────────────────
+  // ── Kraken WebSocket (real-time, not blocked in Brazil) ───────────────────
 
-  const connect = useCallback(() => {
+  const connectKraken = useCallback(() => {
     if (!mountedRef.current) return;
-    const ws = new WebSocket(WS_URL);
+    const ws = new WebSocket("wss://ws.kraken.com");
     wsRef.current = ws;
 
     ws.onopen = () => {
       if (!mountedRef.current) return;
-      wsLiveRef.current = true;
+      ws.send(
+        JSON.stringify({
+          event: "subscribe",
+          pair: KRAKEN_PAIRS,
+          subscription: { name: "ticker" },
+        })
+      );
+      krakenLiveRef.current = true;
       setDataMode("live");
-      // Stop REST polling — WS takes over
-      if (cryptoPollTimer.current) {
-        clearInterval(cryptoPollTimer.current);
-        cryptoPollTimer.current = null;
-      }
     };
 
     ws.onmessage = (evt) => {
       if (!mountedRef.current) return;
       try {
         const msg = JSON.parse(evt.data as string);
-        const d = msg.data;
-        if (!d || d.e !== "24hrTicker") return;
-        const sym = d.s as string;
-        const newPrice = parseFloat(d.c);
+        // Kraken sends arrays for data, objects for system events
+        if (!Array.isArray(msg) || msg[2] !== "ticker") return;
+
+        const pairName = msg[3] as string;
+        const d        = msg[1];
+        const sym      = KR_SYM_MAP[pairName];
+        if (!sym) return;
+
+        const price     = parseFloat(d.c[0]);    // last trade price
+        const openPrice = parseFloat(d.o[0]);    // today's open
+        const high      = parseFloat(d.h[0]);    // today's high
+        const low       = parseFloat(d.l[0]);    // today's low
+        const volBase   = parseFloat(d.v[1]);    // 24h volume in base currency
+        const changePct = openPrice > 0 ? ((price - openPrice) / openPrice) * 100 : 0;
 
         setTickers((prev) => {
-          const old = prev[sym];
-          const flash: Ticker["flash"] = old
-            ? newPrice > old.price ? "up" : newPrice < old.price ? "down" : null
-            : null;
-
-          if (flash) {
-            if (flashTimers.current[sym]) clearTimeout(flashTimers.current[sym]);
-            flashTimers.current[sym] = setTimeout(() => {
-              if (!mountedRef.current) return;
-              setTickers((p) => p[sym] ? { ...p, [sym]: { ...p[sym], flash: null } } : p);
-            }, 600);
-          }
-
+          const flash = applyFlash(sym, price, prev);
+          if (flash) scheduleFlashClear(sym);
           return {
             ...prev,
-            [sym]: {
-              price: newPrice,
-              changePct: parseFloat(d.P),
-              high: parseFloat(d.h),
-              low: parseFloat(d.l),
-              volUsdt: parseFloat(d.q),
-              flash,
-            },
+            [sym]: { price, changePct, high, low, volUsdt: volBase * price, flash },
           };
         });
       } catch { /* ignore */ }
     };
 
     ws.onerror = () => {
-      if (mountedRef.current) wsLiveRef.current = false;
+      if (mountedRef.current) krakenLiveRef.current = false;
     };
 
     ws.onclose = () => {
       if (!mountedRef.current) return;
-      wsLiveRef.current = false;
-      // Restart polling on WS close (if it was live before)
-      if (dataMode === "live") setDataMode("polling");
-      reconnectTimer.current = setTimeout(connect, 10000);
+      krakenLiveRef.current = false;
+      if (mountedRef.current) setDataMode("polling");
+      reconnectTimer.current = setTimeout(connectKraken, 8000);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -280,43 +265,42 @@ export default function CurrencyConverter() {
   useEffect(() => {
     mountedRef.current = true;
 
-    // Fetch prices immediately on mount (don't wait for WS)
-    fetchCryptoPrices();
+    // Immediate data while Kraken WS is connecting
+    fetchCoinGecko();
     fetchFiat();
-
-    // Attempt WS connection (real-time if not blocked)
-    connect();
+    // Start Kraken WS for real-time
+    connectKraken();
 
     // Fiat: refresh every 60s
     fiatTimer.current = setInterval(fetchFiat, 60_000);
+
+    // Fiat age display
     fiatAgeTimer.current = setInterval(() => {
       if (fiatFetchedAt.current)
         setFiatAge(Math.floor((Date.now() - fiatFetchedAt.current) / 1000));
     }, 5_000);
 
-    // Crypto polling every 30s when WS is not live
-    cryptoPollTimer.current = setInterval(() => {
-      if (!wsLiveRef.current) fetchCryptoPrices();
-    }, 30_000);
+    // CoinGecko every 60s — keeps BNB fresh + acts as fallback when Kraken is down
+    cgPollTimer.current = setInterval(fetchCoinGecko, 60_000);
 
     return () => {
       mountedRef.current = false;
       wsRef.current?.close();
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-      if (fiatTimer.current) clearInterval(fiatTimer.current);
-      if (fiatAgeTimer.current) clearInterval(fiatAgeTimer.current);
-      if (cryptoPollTimer.current) clearInterval(cryptoPollTimer.current);
+      if (fiatTimer.current)     clearInterval(fiatTimer.current);
+      if (fiatAgeTimer.current)  clearInterval(fiatAgeTimer.current);
+      if (cgPollTimer.current)   clearInterval(cgPollTimer.current);
       Object.values(flashTimers.current).forEach(clearTimeout);
     };
-  }, [connect, fetchFiat, fetchCryptoPrices]);
+  }, [connectKraken, fetchFiat, fetchCoinGecko]);
 
   // ── Converter logic ────────────────────────────────────────────────────────
 
-  function toUsd(cur: string, amount: number): number {
-    if (cur === "USDT" || cur === "USD") return amount;
+  function toUsd(cur: string, amt: number): number {
+    if (cur === "USDT" || cur === "USD") return amt;
     const pair = PAIRS.find((p) => p.short === cur);
-    if (pair) return amount * (tickers[pair.symbol]?.price ?? 0);
-    return fiatRates[cur] ? amount / fiatRates[cur] : 0;
+    if (pair) return amt * (tickers[pair.symbol]?.price ?? 0);
+    return fiatRates[cur] ? amt / fiatRates[cur] : 0;
   }
 
   function fromUsd(cur: string, usd: number): number {
@@ -333,11 +317,11 @@ export default function CurrencyConverter() {
     return !!fiatRates[cur];
   }
 
-  const amount       = parseAmount(fromAmt);
-  const canConvert   = hasData(fromCur) && hasData(toCur);
-  const resultUsd    = toUsd(fromCur, amount);
-  const result       = fromUsd(toCur, resultUsd);
-  const ratePerUnit  = fromUsd(toCur, toUsd(fromCur, 1));
+  const amount      = parseAmount(fromAmt);
+  const canConvert  = hasData(fromCur) && hasData(toCur);
+  const resultUsd   = toUsd(fromCur, amount);
+  const result      = fromUsd(toCur, resultUsd);
+  const ratePerUnit = fromUsd(toCur, toUsd(fromCur, 1));
 
   const ALL_CURRENCIES = ["USDT", ...PAIRS.map((p) => p.short), "USD", ...FIAT_CODES];
 
@@ -347,9 +331,9 @@ export default function CurrencyConverter() {
     dataMode === "error"   ? "bg-[#ff4444]" : "bg-[#f5a623]";
 
   const statusLabel =
-    dataMode === "live"    ? "LIVE" :
-    dataMode === "polling" ? "POLLING" :
-    dataMode === "error"   ? "OFFLINE" : "CONNECTING…";
+    dataMode === "live"    ? "LIVE · Kraken" :
+    dataMode === "polling" ? "POLLING · CoinGecko" :
+    dataMode === "error"   ? "OFFLINE"       : "CONECTANDO…";
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -399,12 +383,11 @@ export default function CurrencyConverter() {
             <button
               onClick={() => { setFromCur(toCur); setToCur(fromCur); }}
               className="btn-ghost border border-[#333] px-3 py-2 text-base self-center flex-shrink-0 hover:border-[#555] transition-colors"
-              title="Swap"
             >
               ⇄
             </button>
 
-            {/* To — result */}
+            {/* To */}
             <div className="flex gap-2 flex-1 min-w-0">
               <div className="field flex-1 flex items-center justify-end font-mono min-w-0">
                 {amount > 0 ? (
@@ -429,11 +412,11 @@ export default function CurrencyConverter() {
             </div>
           </div>
 
-          {/* Rate / status line */}
+          {/* Rate line */}
           <p className="text-[10px] font-mono text-[#444] mt-3 tabular-nums min-h-[14px]">
             {canConvert && ratePerUnit > 0
               ? `1 ${fromCur} = ${fmtResult(ratePerUnit)} ${toCur}`
-              : dataMode === "connecting" || dataMode === "error"
+              : !canConvert && amount > 0
               ? "Buscando cotações…"
               : ""}
           </p>
@@ -450,20 +433,20 @@ export default function CurrencyConverter() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-[#1a1a1a]">
-                  <th className="text-left px-4 py-2 text-[#444] font-mono tracking-widest font-normal">PAIR</th>
+                  <th className="text-left px-4 py-2 text-[#444] font-mono tracking-widest font-normal">PAR</th>
                   <th className="text-right px-3 py-2 text-[#444] font-mono tracking-widest font-normal">PREÇO</th>
                   <th className="text-right px-3 py-2 text-[#444] font-mono tracking-widest font-normal">24H %</th>
-                  <th className="text-right px-3 py-2 text-[#444] font-mono tracking-widest font-normal hidden sm:table-cell">MÁXIMA</th>
-                  <th className="text-right px-3 py-2 text-[#444] font-mono tracking-widest font-normal hidden sm:table-cell">MÍNIMA</th>
+                  <th className="text-right px-3 py-2 text-[#444] font-mono tracking-widest font-normal hidden sm:table-cell">MÁX</th>
+                  <th className="text-right px-3 py-2 text-[#444] font-mono tracking-widest font-normal hidden sm:table-cell">MÍN</th>
                   <th className="text-right px-4 py-2 text-[#444] font-mono tracking-widest font-normal hidden md:table-cell">VOL</th>
                 </tr>
               </thead>
               <tbody>
                 {PAIRS.map((pair) => {
-                  const t = tickers[pair.symbol];
-                  const up = (t?.changePct ?? 0) >= 0;
+                  const t          = tickers[pair.symbol];
+                  const up         = (t?.changePct ?? 0) >= 0;
                   const isSelected = fromCur === pair.short;
-                  const flashBg =
+                  const flashBg    =
                     t?.flash === "up"   ? "bg-[#50e3c2]/10" :
                     t?.flash === "down" ? "bg-[#ff4444]/10"  : "";
                   return (
@@ -477,9 +460,14 @@ export default function CurrencyConverter() {
                         <div className="flex items-center gap-2">
                           {isSelected && <span className="w-1 h-1 rounded-full bg-[#cc0000] flex-shrink-0" />}
                           <span className="font-semibold text-white">{pair.short}</span>
-                          <span className="text-[#333] hidden sm:inline">/USDT</span>
+                          <span className="text-[#333] hidden sm:inline">/USD</span>
                         </div>
-                        <p className="text-[9px] text-[#444] hidden sm:block mt-0.5">{pair.name}</p>
+                        <p className="text-[9px] text-[#444] hidden sm:block mt-0.5">
+                          {pair.name}
+                          {pair.kraken === null && (
+                            <span className="ml-1 text-[#333]">· CoinGecko</span>
+                          )}
+                        </p>
                       </td>
                       <td className="px-3 py-2.5 text-right tabular-nums">
                         {t ? (
