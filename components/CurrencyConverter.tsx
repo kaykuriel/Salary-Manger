@@ -17,7 +17,7 @@ const PAIRS = [
   { symbol: "LINKUSDT", name: "Chainlink",  short: "LINK" },
 ];
 
-const FIAT_CODES = ["BRL", "EUR", "GBP", "JPY", "CAD", "CHF", "AUD", "ARS", "MXN", "CNY"];
+const FIAT_CODES = ["BRL", "EUR", "GBP", "JPY", "CAD", "CHF", "AUD", "HKD", "MXN", "CNY"];
 
 // Port 443 works through most firewalls; 9443 is often blocked
 const WS_URL =
