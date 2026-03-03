@@ -224,6 +224,19 @@ async function exportExcel(months: MonthReport[]) {
   XLSX.writeFile(wb, "salary-report.xlsx");
 }
 
+// ─── Diagnostic row ────────────────────────────────────────────────────────────
+
+function DiagRow({ label, value, err, highlight }: { label: string; value: unknown; err?: string; highlight?: boolean }) {
+  const display = value === true ? "yes" : value === false ? "no" : String(value ?? "—");
+  const color = err ? "text-[#ff4444]" : highlight ? "text-[#50e3c2]" : value === false ? "text-[#ff4444]" : "text-[#888]";
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <span className="text-[10px] font-mono text-[#444] uppercase tracking-wider">{label}</span>
+      <span className={`text-[10px] font-mono ${color}`}>{err ?? display}</span>
+    </div>
+  );
+}
+
 // ─── Reports Manager ───────────────────────────────────────────────────────────
 
 export default function ReportsManager({ refreshTrigger = 0 }: { refreshTrigger?: number }) {
@@ -233,8 +246,19 @@ export default function ReportsManager({ refreshTrigger = 0 }: { refreshTrigger?
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [debug, setDebug] = useState<Record<string, unknown> | null>(null);
+  const [diagResult, setDiagResult] = useState<Record<string, unknown> | null>(null);
+  const [diagLoading, setDiagLoading] = useState(false);
   const hasRetriedRef = useRef(false);
   const isFirstRenderRef = useRef(true);
+
+  function runDiagnostic() {
+    setDiagLoading(true);
+    setDiagResult(null);
+    fetch("/api/debug")
+      .then((r) => r.json())
+      .then((d) => { setDiagResult(d); setDiagLoading(false); })
+      .catch(() => { setDiagResult({ error: "Could not reach /api/debug" }); setDiagLoading(false); });
+  }
 
   const loadReports = useCallback(() => {
     setLoading(true);
@@ -380,23 +404,40 @@ export default function ReportsManager({ refreshTrigger = 0 }: { refreshTrigger?
         </div>
 
         {months.length === 0 ? (
-          <div className="card p-8 text-center flex flex-col items-center gap-3">
-            <p className="text-[#555] text-sm">No data recorded yet.</p>
-            <p className="text-[#444] text-xs">Add salary and expenses in the Dashboard, then come back here.</p>
-            {!hasRetriedRef.current ? (
-              <p className="text-[10px] text-[#333] font-mono">syncing with dashboard…</p>
-            ) : (
+          <div className="card p-6 flex flex-col items-center gap-4">
+            <div className="text-center flex flex-col gap-1.5">
+              <p className="text-[#555] text-sm">No data found for your account.</p>
+              <p className="text-[#444] text-xs">Add salary and expenses in the Dashboard tab, then return here.</p>
+            </div>
+
+            <div className="flex gap-2">
+              {!hasRetriedRef.current ? (
+                <p className="text-[10px] text-[#333] font-mono self-center">syncing…</p>
+              ) : (
+                <button
+                  onClick={() => { hasRetriedRef.current = false; loadReports(); }}
+                  className="btn-ghost border border-[#333] text-xs px-3 py-1.5"
+                >
+                  ↻ Refresh
+                </button>
+              )}
               <button
-                onClick={() => { hasRetriedRef.current = false; loadReports(); }}
-                className="btn-ghost border border-[#333] text-xs px-3 py-1.5 mt-1"
+                onClick={runDiagnostic}
+                disabled={diagLoading}
+                className="btn-ghost border border-[#333] text-xs px-3 py-1.5 disabled:opacity-50"
               >
-                ↻ Refresh
+                {diagLoading ? "checking…" : "Diagnose connection"}
               </button>
-            )}
-            {debug && (
-              <pre className="text-left text-[10px] text-[#333] bg-[#0a0a0a] rounded p-3 mt-1 overflow-x-auto w-full">
-                {JSON.stringify(debug, null, 2)}
-              </pre>
+            </div>
+
+            {diagResult && (
+              <div className="w-full text-left bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg p-4 flex flex-col gap-1.5">
+                <DiagRow label="User in DB" value={diagResult.userExistsInDB} err={diagResult.userDBError as string} />
+                <DiagRow label="Saved rows" value={diagResult.savedRowCount as number} />
+                <DiagRow label="Write test" value={diagResult.writeTest} highlight={diagResult.writeTest === "OK"} />
+                <DiagRow label="Write verified" value={diagResult.writeVerified} />
+                {diagResult.error && <p className="text-[10px] text-[#ff4444]">{String(diagResult.error)}</p>}
+              </div>
             )}
           </div>
         ) : (

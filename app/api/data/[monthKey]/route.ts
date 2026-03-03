@@ -65,5 +65,5 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, savedUserId: session.userId, monthKey: params.monthKey });
 }
