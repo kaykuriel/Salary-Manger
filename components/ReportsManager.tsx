@@ -436,7 +436,7 @@ export default function ReportsManager({ refreshTrigger = 0 }: { refreshTrigger?
                 <DiagRow label="Saved rows" value={diagResult.savedRowCount as number} />
                 <DiagRow label="Write test" value={diagResult.writeTest} highlight={diagResult.writeTest === "OK"} />
                 <DiagRow label="Write verified" value={diagResult.writeVerified} />
-                {diagResult.error && <p className="text-[10px] text-[#ff4444]">{String(diagResult.error)}</p>}
+                {typeof diagResult.error === "string" && <p className="text-[10px] text-[#ff4444]">{diagResult.error}</p>}
               </div>
             )}
           </div>
