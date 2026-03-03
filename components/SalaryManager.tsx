@@ -132,7 +132,10 @@ export default function SalaryManager({ userId: _userId, onSaved, onSaveFail }: 
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(monthData),
-      }).catch(() => {});
+      })
+        .then((r) => r.ok ? r.json() : null)
+        .then((j) => { if (j?.ok) onSaved?.(); })
+        .catch(() => {});
     }, 800);
     return () => clearTimeout(timer);
   }, [monthData, hydrated, monthKey]);
@@ -183,7 +186,9 @@ export default function SalaryManager({ userId: _userId, onSaved, onSaveFail }: 
     isDirtyRef.current = false;
     setMonthData(empty());
     setShowResetConfirm(false);
-    fetch(`/api/data/${monthKey}`, { method: "DELETE" }).catch(() => {});
+    fetch(`/api/data/${monthKey}`, { method: "DELETE" })
+      .then(() => onSaved?.())
+      .catch(() => {});
   }
 
   const totalSpent = monthData.categories.reduce((s, c) => s + c.amount, 0);
