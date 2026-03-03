@@ -244,9 +244,9 @@ export default function ReportsManager() {
   }
 
   useEffect(() => {
-    // 500ms delay on first load so any in-flight Dashboard save (keepalive PUT)
+    // 1000ms delay on mount so any in-flight Dashboard save (800ms debounce + network)
     // has time to be written to the DB before we read.
-    const initialTimer = setTimeout(loadReports, 500);
+    const initialTimer = setTimeout(loadReports, 1000);
     function onVisible() {
       if (document.visibilityState === "visible") loadReports();
     }
