@@ -63,13 +63,15 @@ export async function createUser(
   }
 }
 
-export async function getUsers(): Promise<User[]> {
+export async function getUsers(): Promise<{ users: User[]; error?: string }> {
   try {
     const res = await fetch("/api/admin/users", { cache: "no-store" });
-    if (!res.ok) return [];
-    return res.json();
+    if (res.status === 403) return { users: [], error: "Access denied. Admin privileges required." };
+    if (!res.ok) return { users: [], error: "Failed to load users." };
+    const users: User[] = await res.json();
+    return { users };
   } catch {
-    return [];
+    return { users: [], error: "Network error." };
   }
 }
 

@@ -174,6 +174,7 @@ function UserDataView({ userId, username }: { userId: string; username: string }
 
 export default function AdminPanel({ currentUserId }: { currentUserId: string }) {
   const [users, setUsers] = useState<User[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -182,10 +183,17 @@ export default function AdminPanel({ currentUserId }: { currentUserId: string })
 
   useEffect(() => {
     setMounted(true);
-    getUsers().then(setUsers);
+    getUsers().then(({ users, error }) => {
+      setUsers(users);
+      setLoadError(error ?? null);
+    });
   }, []);
 
-  async function refresh() { setUsers(await getUsers()); }
+  async function refresh() {
+    const { users, error } = await getUsers();
+    setUsers(users);
+    setLoadError(error ?? null);
+  }
 
   if (!mounted) return <div className="text-[#555] text-sm py-8 text-center">Loading…</div>;
 
@@ -212,9 +220,15 @@ export default function AdminPanel({ currentUserId }: { currentUserId: string })
           <button onClick={() => setShowCreate(true)} className="btn text-xs px-3 py-1.5">+ New user</button>
         </div>
 
-        {users.length === 0 ? (
+        {loadError && (
+          <div className="px-5 py-3 bg-[#ff4444]/5 border-b border-[#ff4444]/20">
+            <p className="text-xs text-[#ff4444]">{loadError}</p>
+          </div>
+        )}
+
+        {!loadError && users.length === 0 ? (
           <p className="px-5 py-8 text-center text-[#555] text-sm">No users found.</p>
-        ) : (
+        ) : loadError ? null : (
           <ul>
             {users.map((u, i) => {
               const isMe = u.id === currentUserId;

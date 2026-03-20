@@ -19,20 +19,28 @@ export async function POST(req: NextRequest) {
   }
 
   // Check username taken (case-insensitive via index)
-  const { data: existing } = await supabase
+  const { data: existing, error: checkError } = await supabase
     .from("users")
     .select("id")
     .ilike("username", trimmed)
     .limit(1);
 
+  if (checkError) {
+    return NextResponse.json({ ok: false, error: "Server error. Please try again." }, { status: 503 });
+  }
+
   if (existing && existing.length > 0) {
-    return NextResponse.json({ ok: false, error: "Username already taken." }, { status: 409 });
+    return NextResponse.json({ ok: false, error: "An account with that username already exists." }, { status: 409 });
   }
 
   // Count existing users to determine if this is the first registration
-  const { count } = await supabase
+  const { count, error: countError } = await supabase
     .from("users")
     .select("id", { count: "exact", head: true });
+
+  if (countError) {
+    return NextResponse.json({ ok: false, error: "Server error. Please try again." }, { status: 503 });
+  }
 
   let assignedRole: "admin" | "user" = count === 0 ? "admin" : "user";
 
@@ -47,14 +55,14 @@ export async function POST(req: NextRequest) {
 
   const passwordHash = await hashPassword(password);
 
-  const { error } = await supabase.from("users").insert({
+  const { error: insertError } = await supabase.from("users").insert({
     username: trimmed,
     password_hash: passwordHash,
     role: assignedRole,
   });
 
-  if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  if (insertError) {
+    return NextResponse.json({ ok: false, error: "Failed to create account. Please try again." }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

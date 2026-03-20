@@ -10,15 +10,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "All fields required." }, { status: 400 });
   }
 
-  const { data: users } = await supabase
+  const { data: users, error: dbError } = await supabase
     .from("users")
     .select("id, username, password_hash, role")
     .ilike("username", username.trim())
     .limit(1);
 
+  if (dbError) {
+    return NextResponse.json({ ok: false, error: "Server error. Please try again." }, { status: 503 });
+  }
+
   const user = users?.[0];
   if (!user) {
-    return NextResponse.json({ ok: false, error: "User not found." }, { status: 401 });
+    return NextResponse.json({ ok: false, error: "No account found with that username." }, { status: 401 });
   }
 
   const hash = await hashPassword(password);
